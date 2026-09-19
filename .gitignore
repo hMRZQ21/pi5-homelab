@@ -1,6 +1,6 @@
-# Secrets -- never commit. Config files reference secrets by variable
-# name; real values live only in .env on the deployment host and are
-# never version-controlled.
+# Secrets — never commit.
+# Config files reference secrets by variable name; values live only in .env
+# on this box and are never version-controlled.
 .env
 *.env
 

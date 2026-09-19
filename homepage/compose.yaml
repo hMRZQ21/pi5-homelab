@@ -9,7 +9,7 @@ services:
       - "3000:3000"
     environment:
       # Comma-separated host:port list Homepage will accept requests for.
-      # Real value lives in .env -- see .env.example at the repo root.
+      # Real value lives in .env, gitignored.
       HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS}
       # Consumed by Homepage's own {{HOMEPAGE_VAR_*}} templating inside
       # homepage/config/services.yaml -- see https://gethomepage.dev

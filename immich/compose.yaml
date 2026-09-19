@@ -2,12 +2,9 @@
 # Pristine upstream copy is compose.upstream.yaml -- diff against it on upgrade.
 #
 # Deviations from upstream:
-#   1. model-cache named volume -> bind mount (every stateful path in this
-#      build is a bind mount under /srv; named volumes are invisible to `ls`
-#      and are destroyed by `docker compose down -v` -- see README, rule 1)
-#   2. db-backups bind-mounted at /data/backups (keeps scheduled DB dumps out
-#      of the media tree, so a library restore can't clobber them and a
-#      "just the photos" backup can't sweep them up)
+#   1. model-cache named volume -> bind mount (no named volumes anywhere in this build)
+#   2. db-backups bind-mounted at /data/backups (dumps live
+#      beside the library, not inside it)
 #   3. IMMICH_VERSION pinned to an exact release in .env, never "release"
 
 name: immich
@@ -63,3 +60,4 @@ services:
     restart: always
     healthcheck:
       disable: false
+
