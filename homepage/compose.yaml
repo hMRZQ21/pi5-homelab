@@ -1,0 +1,19 @@
+name: homepage
+
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v2.0.0
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Comma-separated host:port list Homepage will accept requests for.
+      # Real value lives in .env -- see .env.example at the repo root.
+      HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS}
+      # Consumed by Homepage's own {{HOMEPAGE_VAR_*}} templating inside
+      # homepage/config/services.yaml -- see https://gethomepage.dev
+      HOMEPAGE_VAR_TAILNET_HOST: ${HOMEPAGE_VAR_TAILNET_HOST}
+    volumes:
+      - /opt/stacks/homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro

@@ -1,0 +1,13 @@
+# Secrets -- never commit. Config files reference secrets by variable
+# name; real values live only in .env on the deployment host and are
+# never version-controlled.
+.env
+*.env
+
+# Editor and OS noise
+*.swp
+*~
+.DS_Store
+
+# Homepage writes runtime logs into its config dir
+homepage/config/logs/

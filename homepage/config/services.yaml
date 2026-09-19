@@ -1,0 +1,15 @@
+---
+- Infrastructure:
+    - Portainer:
+        icon: portainer.png
+        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443
+        description: Container management
+        server: my-docker
+        container: portainer
+
+    - Homepage:
+        icon: homepage.png
+        href: http://{{HOMEPAGE_VAR_TAILNET_HOST}}:3000
+        description: This dashboard
+        server: my-docker
+        container: homepage
