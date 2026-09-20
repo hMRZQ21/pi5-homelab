@@ -19,6 +19,7 @@
 - Immich:
     - Immich Server:
         icon: immich.png
+        href: http://rasppi.local:2283
         description: Photo library (import paused)
         server: my-docker
         container: immich_server
