@@ -6,6 +6,7 @@
         description: Container management
         server: my-docker
         container: portainer
+        showStats: true
 
     - Homepage:
         icon: homepage.png
@@ -13,6 +14,36 @@
         description: This dashboard
         server: my-docker
         container: homepage
+        showStats: true
+
+- Immich:
+    - Immich Server:
+        icon: immich.png
+        description: Photo library (import paused)
+        server: my-docker
+        container: immich_server
+        showStats: true
+
+    - Postgres:
+        icon: postgresql.png
+        description: Immich database
+        server: my-docker
+        container: immich_postgres
+        showStats: true
+
+    - Machine Learning:
+        icon: mdi-brain
+        description: Search and face detection
+        server: my-docker
+        container: immich_machine_learning
+        showStats: true
+
+    - Valkey:
+        icon: valkey.png
+        description: Immich cache and queue
+        server: my-docker
+        container: immich_redis
+        showStats: true
 
 - System:
     - SSD Temp:
