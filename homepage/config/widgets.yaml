@@ -6,6 +6,8 @@
     cpu: true
     memory: true
     disk: /
+    cputemp: true
+    units: metric
 
 - search:
     provider: duckduckgo

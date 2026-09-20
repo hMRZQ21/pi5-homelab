@@ -17,3 +17,13 @@ services:
     volumes:
       - /opt/stacks/homepage/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Sensor source for the SSD temp tile (Homepage's resources widget can't read
+  # NVMe). No published port: Homepage reaches it as http://glances:61208 over
+  # this project's default network. Tag pinned (checked on Docker Hub, arm64 ok).
+  glances:
+    image: nicolargo/glances:4.5.6
+    container_name: glances
+    restart: unless-stopped
+    environment:
+      GLANCES_OPT: "-w"

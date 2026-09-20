@@ -13,3 +13,14 @@
         description: This dashboard
         server: my-docker
         container: homepage
+
+- System:
+    - SSD Temp:
+        icon: mdi-harddisk
+        description: Samsung 990 PRO
+        widget:
+          type: glances
+          url: http://glances:61208
+          version: 4
+          metric: sensor:Composite
+          chart: false
