@@ -7,7 +7,7 @@ theme: dark
 color: slate
 background:
   image: https://picsum.photos/seed/homelab/16/9
-  blur: sm
+  blur: xs
   brightness: 50
   saturate: 100
-cardBlur: sm
+cardBlur: xs
