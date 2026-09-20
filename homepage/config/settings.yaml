@@ -5,3 +5,9 @@
 title: Hussam's Homelab
 theme: dark
 color: slate
+background:
+  image: https://picsum.photos/seed/homelab/16/9
+  blur: sm
+  brightness: 50
+  saturate: 100
+cardBlur: sm
