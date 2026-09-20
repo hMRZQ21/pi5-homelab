@@ -8,6 +8,6 @@ color: slate
 background:
   image: https://picsum.photos/seed/homelab/16/9
   blur: xs
-  brightness: 50
+  brightness: 75
   saturate: 100
 cardBlur: xs
