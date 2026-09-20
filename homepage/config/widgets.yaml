@@ -2,6 +2,17 @@
 # For configuration options and examples, please see:
 # https://gethomepage.dev/configs/info-widgets/
 
+- greeting:
+    text_size: 3xl
+    text: Welcome back, Hussam
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: full
+      timeStyle: short
+      hour12: true
+
 - resources:
     cpu: true
     memory: true
