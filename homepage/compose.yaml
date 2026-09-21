@@ -5,8 +5,9 @@ services:
     image: ghcr.io/gethomepage/homepage:v2.0.0
     container_name: homepage
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Host network so Homepage can reach Glances on the host loopback (see below).
+    # Homepage now binds :3000 itself instead of Docker publishing it.
+    network_mode: host
     environment:
       # Comma-separated host:port list Homepage will accept requests for.
       # Real value lives in .env, gitignored.
@@ -19,11 +20,17 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # Sensor source for the SSD temp tile (Homepage's resources widget can't read
-  # NVMe). No published port: Homepage reaches it as http://glances:61208 over
-  # this project's default network. Tag pinned (checked on Docker Hub, arm64 ok).
+  # NVMe). Loopback only (127.0.0.1:61208), reached by Homepage over the host network. Tag pinned (checked on Docker Hub, arm64 ok).
   glances:
     image: nicolargo/glances:4.5.6
     container_name: glances
     restart: unless-stopped
+    # Host network: Glances must see the host NICs (eth0) for the LAN-traffic tile.
+    # Bound to loopback only, so nothing new is exposed to the LAN or tailnet.
+    network_mode: host
     environment:
-      GLANCES_OPT: "-w"
+      GLANCES_OPT: "-w -B 127.0.0.1"
+    volumes:
+      # Limits the sensors plugin to the NVMe so the top-bar Glances widget (which
+      # averages every matching temp sensor) shows the SSD alone.
+      - /opt/stacks/homepage/glances.conf:/etc/glances/glances.conf:ro

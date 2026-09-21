@@ -47,12 +47,12 @@
         showStats: true
 
 - System:
-    - SSD Temp:
-        icon: mdi-harddisk
-        description: Samsung 990 PRO
+    - LAN Traffic:
+        icon: mdi-lan
+        description: Pi eth0 (host)
         widget:
           type: glances
-          url: http://glances:61208
+          url: http://127.0.0.1:61208
           version: 4
-          metric: sensor:Composite
-          chart: false
+          metric: network:eth0
+          chart: true

@@ -20,6 +20,15 @@
     cputemp: true
     units: metric
 
+- glances:
+    url: http://127.0.0.1:61208
+    version: 4
+    cpu: false
+    mem: false
+    cputemp: true
+    cpuSensorLabel: Composite
+    label: SSD
+
 - search:
     provider: duckduckgo
     target: _blank
