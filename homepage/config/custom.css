@@ -15,7 +15,7 @@ li.service > div:hover {
 /* ============ Header panel (rev 13) ============ */
 /* One dark slate panel behind greeting, stats and clock/weather so they stand out on any photo. */
 #information-widgets {
-  background-color: rgba(15, 23, 42, 0.8) !important;
+  background-color: rgba(15, 23, 42, 0.5) !important;
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
   border-radius: 16px;
   padding: 14px 20px !important;
@@ -92,3 +92,6 @@ li.service > div:hover {
 @media (max-width: 380px) {
   #widgets-wrap { grid-template-columns: 1fr !important; }
 }
+
+/* Rev 13c: the weather icon SVG has ~5px of built-in left padding; pull it left so the cloud lines up with the clock text. */
+#information-widgets-right svg.information-widget-icon { margin-left: -5px; }
