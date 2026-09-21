@@ -24,6 +24,12 @@
         server: my-docker
         container: immich_server
         showStats: true
+        widget:
+          type: immich
+          url: http://localhost:2283
+          key: "{{HOMEPAGE_VAR_IMMICH_STATS_KEY}}"
+          version: 2
+          fields: ["photos", "videos", "storage"]
 
     - Postgres:
         icon: postgresql.png

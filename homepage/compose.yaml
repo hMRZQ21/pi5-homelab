@@ -8,6 +8,10 @@ services:
     # Host network so Homepage can reach Glances on the host loopback (see below).
     # Homepage now binds :3000 itself instead of Docker publishing it.
     network_mode: host
+    # Immich stats key (own key, server.statistics only). Lives outside git; optional so a missing file can't stop Homepage.
+    env_file:
+      - path: /srv/secrets/homepage-immich.env
+        required: false
     environment:
       # Comma-separated host:port list Homepage will accept requests for.
       # Real value lives in .env, gitignored.
