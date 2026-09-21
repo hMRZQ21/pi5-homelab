@@ -36,3 +36,5 @@
     longitude: -74.0060
     units: imperial
     cache: 5
+    format:
+      maximumFractionDigits: 0

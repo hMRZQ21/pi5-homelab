@@ -1,9 +1,9 @@
 /* Darker service tiles so they stand out on both light and dark photos. */
 li.service > div {
-  background-color: rgb(15 23 42 / 0.5) !important;
+  background-color: rgba(15, 23, 42, 0.7) !important;
 }
 li.service > div:hover {
-  background-color: rgb(30 41 59 / 0.6) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 /* Background brightness 65%. settings.yaml `brightness` only accepts Tailwind steps
@@ -15,11 +15,12 @@ li.service > div:hover {
 /* ============ Header panel (rev 13) ============ */
 /* One dark slate panel behind greeting, stats and clock/weather so they stand out on any photo. */
 #information-widgets {
-  background-color: rgb(15 23 42 / 0.78) !important;
-  border: 1px solid rgb(148 163 184 / 0.22) !important;
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
   border-radius: 16px;
   padding: 14px 20px !important;
   margin-bottom: 0.5rem !important;
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 #widgets-wrap {
@@ -76,3 +77,26 @@ li.service > div:hover {
   .information-widget-resource > div { margin-left: 0.5rem !important; min-width: 0 !important; width: 100%; }
   .information-widget-resource > div > div:first-child { white-space: nowrap; gap: 0.35rem; }
   #widgets-wrap .information-widget-resource .pr-1::after { font-size: 0.68rem; }}
+
+/* ============ Rev 13b ============ */
+/* Clock and weather share one left edge (column stays anchored right on wide screens). */
+#information-widgets-right { align-items: flex-start !important; }
+#information-widgets-right .widget-container,
+#information-widgets-right .widget-container > div { align-items: flex-start !important; justify-content: flex-start !important; }
+
+/* Phone: if a stat cell is too narrow, the label wraps under the value instead of clipping. */
+@media (max-width: 767px) {
+  .information-widget-resource > div > div:first-child { flex-wrap: wrap; justify-content: space-between; }
+}
+/* Very narrow phones: one stat per row. */
+@media (max-width: 380px) {
+  #widgets-wrap { grid-template-columns: 1fr !important; }
+}
+
+/* Stark (FontSpace, Neale Davidson, personal use). File is served from /srv/homepage/fonts, not git. */
+@font-face {
+  font-family: "Stark";
+  src: url("/fonts/Stark.ttf") format("truetype");
+  font-display: swap;
+}
+body, body *:not(svg):not(path) { font-family: "Stark", ui-sans-serif, system-ui, sans-serif !important; }

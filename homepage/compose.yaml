@@ -18,6 +18,8 @@ services:
     volumes:
       - /opt/stacks/homepage/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Stark font (personal-use licence): lives outside git, so it never reaches the public repo.
+      - /srv/homepage/fonts:/app/public/fonts:ro
 
   # Sensor source for the SSD temp tile (Homepage's resources widget can't read
   # NVMe). Loopback only (127.0.0.1:61208), reached by Homepage over the host network. Tag pinned (checked on Docker Hub, arm64 ok).
