@@ -1,9 +1,9 @@
 /* Darker service tiles so they stand out on both light and dark photos. */
 li.service > div {
-  background-color: rgba(15, 23, 42, 0.7) !important;
+  background-color: rgba(15, 23, 42, 0.5) !important;
 }
 li.service > div:hover {
-  background-color: rgba(30, 41, 59, 0.8) !important;
+  background-color: rgba(30, 41, 59, 0.6) !important;
 }
 
 /* Background brightness 65%. settings.yaml `brightness` only accepts Tailwind steps
@@ -92,11 +92,3 @@ li.service > div:hover {
 @media (max-width: 380px) {
   #widgets-wrap { grid-template-columns: 1fr !important; }
 }
-
-/* Stark (FontSpace, Neale Davidson, personal use). File is served from /srv/homepage/fonts, not git. */
-@font-face {
-  font-family: "Stark";
-  src: url("/fonts/Stark.ttf") format("truetype");
-  font-display: swap;
-}
-body, body *:not(svg):not(path) { font-family: "Stark", ui-sans-serif, system-ui, sans-serif !important; }
