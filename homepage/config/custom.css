@@ -27,7 +27,7 @@ li.service > div:hover {
   justify-content: flex-start !important;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px 28px;
+  gap: 10px 0;
 }
 .information-widget-greeting span {
   font-size: clamp(1.5rem, 5vw, 1.9rem) !important;
@@ -94,4 +94,10 @@ li.service > div:hover {
 }
 
 /* Rev 13c: the weather icon SVG has ~5px of built-in left padding; pull it left so the cloud lines up with the clock text. */
-#information-widgets-right svg.information-widget-icon { margin-left: -5px; }
+#information-widgets-right svg.information-widget-icon { margin-left: -5.5px; }
+
+/* Rev 13d: (1) the clock + weather block always starts on its own row at the tile's left edge, in line with the greeting and stats.
+   (2) Uniform spacing between stats: the wrap no longer adds its own 28px column gap on top of each stat's 12px margin,
+   which made SSD TEMP sit 40px from CPU TEMP while the others sat 12px apart. */
+#information-widgets-right { margin: 0 !important; flex: 0 0 100% !important; }
+@media (min-width: 768px) { .information-widget-greeting { margin-right: 28px; } }
