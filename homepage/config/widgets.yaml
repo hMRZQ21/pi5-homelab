@@ -20,6 +20,7 @@
     cputemp: true
     units: metric
 
+# SSD temperature (Glances is limited to the NVMe sensor by glances.conf).
 - glances:
     url: http://127.0.0.1:61208
     version: 4
@@ -27,8 +28,11 @@
     mem: false
     cputemp: true
     cpuSensorLabel: Composite
-    label: SSD
 
-- search:
-    provider: duckduckgo
-    target: _blank
+# Weather under the clock (Open-Meteo, no API key). City-level coordinates.
+- openmeteo:
+    label: New York
+    latitude: 40.7128
+    longitude: -74.0060
+    units: imperial
+    cache: 5

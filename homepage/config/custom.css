@@ -11,3 +11,68 @@ li.service > div:hover {
 .backdrop-brightness-75 {
   --tw-backdrop-brightness: brightness(65%) !important;
 }
+
+/* ============ Header panel (rev 13) ============ */
+/* One dark slate panel behind greeting, stats and clock/weather so they stand out on any photo. */
+#information-widgets {
+  background-color: rgb(15 23 42 / 0.78) !important;
+  border: 1px solid rgb(148 163 184 / 0.22) !important;
+  border-radius: 16px;
+  padding: 14px 20px !important;
+  margin-bottom: 0.5rem !important;
+  backdrop-filter: blur(6px);
+}
+#widgets-wrap {
+  justify-content: flex-start !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+.information-widget-greeting span {
+  font-size: clamp(1.5rem, 5vw, 1.9rem) !important;
+  line-height: 1.1;
+}
+/* Clock on top, weather underneath, right-aligned. */
+#information-widgets-right {
+  margin: 0 0 0 auto !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  flex-grow: 0 !important;
+  align-items: flex-end;
+  gap: 2px;
+}
+#information-widgets-right .widget-container { align-items: flex-end; }
+
+/* Stat labels: spell out what each number is. Real text is hidden, ::after supplies the label. */
+#widgets-wrap .information-widget-resource .pr-1 { font-size: 0; }
+#widgets-wrap .information-widget-resource .pr-1::after { font-size: 0.75rem; letter-spacing: 0.03em; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(1) .pr-1::after { content: "CPU LOAD"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(2) .pr-1::after { content: "RAM FREE"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(3) .pr-1::after { content: "DISK FREE"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(4) .pr-1::after { content: "CPU TEMP"; }
+.information-widget-glances .information-widget-resource .pr-1::after { content: "SSD TEMP"; }
+.information-widget-glances .information-widget-label { display: none; }
+.information-widget-glances { pointer-events: none; }  /* its link points at Glances on loopback */
+
+/* Phone / narrow: 2-column stat grid, everything left-aligned, smaller clock. */
+@media (max-width: 767px) {
+  #widgets-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    align-items: start;
+  }
+  /* Flatten the stat wrappers so all five stats become cells of one grid. */
+  #widgets-wrap > .widget-container:not(.information-widget-greeting):not(.information-widget-datetime),
+  #widgets-wrap > .widget-container:not(.information-widget-greeting) > div,
+  #widgets-wrap > a.information-widget-glances,
+  #widgets-wrap > a.information-widget-glances > div { display: contents; }
+  .information-widget-greeting { grid-column: 1 / -1; }
+  #information-widgets-right { grid-column: 1 / -1; margin: 0 !important; align-items: flex-start; }
+  #information-widgets-right .widget-container { align-items: flex-start; }
+  .information-widget-datetime span { font-size: 1rem !important; }
+  /* keep each stat on one line inside its half-width cell */
+  .information-widget-resource { margin-right: 0 !important; min-width: 0; }
+  .information-widget-resource > div { margin-left: 0.5rem !important; min-width: 0 !important; width: 100%; }
+  .information-widget-resource > div > div:first-child { white-space: nowrap; gap: 0.35rem; }
+  #widgets-wrap .information-widget-resource .pr-1::after { font-size: 0.68rem; }}
