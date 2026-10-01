@@ -67,7 +67,8 @@ credential rotation, not a `.gitignore` fix.
 
 /srv/                        <- runtime state, never in git
 ├── portainer/data/
-└── immich/{library,postgres,db-backups}/
+├── immich/{library,postgres,db-backups}/
+└── secrets/                 <- 0700, one 0600 env file per consumer, never in git
 ```
 
 ---

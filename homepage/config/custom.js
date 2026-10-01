@@ -86,11 +86,11 @@
       cpuTxt = (q && typeof q.cpu === 'number' && q.cpu_hz_current)
         ? Math.round(q.cpu) + '% · ' + (q.cpu_hz_current / 1e9).toFixed(1) + ' GHz' : null;
       ramTxt = (m && m.total)
-        ? (m.used / GIB).toFixed(1) + '/' + (m.total / GIB).toFixed(1) + 'GB (' + Math.round(m.percent) + '%)' : null;
+        ? (m.used / GIB).toFixed(1) + ' / ' + (m.total / GIB).toFixed(1) + 'GB (' + Math.round(m.percent) + '%)' : null;
       // Glances runs in a container, so it sees the root SSD through its bind-mounted files; take the largest filesystem.
       var d = Array.isArray(f) && f.length ? f.reduce(function (a, b) { return b.size > a.size ? b : a; }) : null;
       diskTxt = (d && d.size)
-        ? (d.used < TIB ? Math.round(d.used / GIB) + 'GB' : (d.used / TIB).toFixed(1) + 'TB') + '/' + (d.size / TIB).toFixed(1) + 'TB (' + Math.round(d.used / d.size * 100) + '%)' : null;
+        ? (d.used < TIB ? Math.round(d.used / GIB) + 'GB' : (d.used / TIB).toFixed(1) + 'TB') + ' / ' + (d.size / TIB).toFixed(1) + 'TB (' + Math.round(d.used / d.size * 100) + '%)' : null;
       apply();
     });
   }
