@@ -47,9 +47,9 @@ li.service > div:hover {
 /* Stat labels: spell out what each number is. Real text is hidden, ::after supplies the label. */
 #widgets-wrap .information-widget-resource .pr-1 { font-size: 0; }
 #widgets-wrap .information-widget-resource .pr-1::after { font-size: 0.75rem; letter-spacing: 0.03em; }
-.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(1) .pr-1::after { content: "CPU LOAD"; }
-.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(2) .pr-1::after { content: "RAM FREE"; }
-.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(3) .pr-1::after { content: "DISK FREE"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(1) .pr-1::after { content: "CPU"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(2) .pr-1::after { content: "RAM"; }
+.widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(3) .pr-1::after { content: "DISK"; }
 .widget-container:not(.information-widget-greeting) .information-widget-resource:nth-child(4) .pr-1::after { content: "CPU TEMP"; }
 .information-widget-glances .information-widget-resource .pr-1::after { content: "SSD TEMP"; }
 .information-widget-glances .information-widget-label { display: none; }
@@ -100,4 +100,6 @@ li.service > div:hover {
    (2) Uniform spacing between stats: the wrap no longer adds its own 28px column gap on top of each stat's 12px margin,
    which made SSD TEMP sit 40px from CPU TEMP while the others sat 12px apart. */
 #information-widgets-right { margin: 0 !important; flex: 0 0 100% !important; }
-@media (min-width: 768px) { .information-widget-greeting { margin-right: 28px; } }
+/* Rev 16: on desktop the greeting gets its own row and the five stats share the row below it,
+   so the used/total (%) values never push SSD TEMP onto a line of its own. */
+@media (min-width: 768px) { .information-widget-greeting { flex: 0 0 100% !important; margin-right: 0; } }

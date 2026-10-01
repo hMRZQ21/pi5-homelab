@@ -6,6 +6,8 @@ server. This repo is the **source of truth** for how every service is configured
 > **Scope:** compose files and hand-authored config only.
 > No application state, no media, no secrets, no network addresses.
 
+![Homepage dashboard: live CPU, RAM, disk and temperatures, plus per-container tiles](docs/dashboard.png)
+
 ---
 
 ## Rules
