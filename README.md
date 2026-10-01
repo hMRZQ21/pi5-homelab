@@ -62,12 +62,14 @@ credential rotation, not a `.gitignore` fix.
 ├── homepage/config/         <- tracked: settings, services, widgets, bookmarks,
 │                                docker, kubernetes, proxmox, custom.css, custom.js
 │   └── logs/                <- ignored: Homepage writes here
-└── immich/compose.yaml
-    └── .env                 <- ignored
+├── immich/compose.yaml
+│   └── .env                 <- ignored
+└── photo-review/            <- compose.yaml + app/ (stdlib Python, no dependencies)
 
 /srv/                        <- runtime state, never in git
 ├── portainer/data/
 ├── immich/{library,postgres,db-backups}/
+├── photo-review/            <- groups.json (generated), answers.jsonl (append-only)
 └── secrets/                 <- 0700, one 0600 env file per consumer, never in git
 ```
 
@@ -80,6 +82,7 @@ credential rotation, not a `.gitignore` fix.
 | Portainer CE | container inspection, browser | admin only |
 | Homepage | status dashboard | admin only |
 | Immich | family photo library | household + remote |
+| Photo Review | family review of disputed photo dates; records answers only, never writes to Immich | household + remote |
 
 Outside Docker, on the host: **Tailscale** (access layer — no ports are forwarded
 on the router) and **lazydocker** (terminal container inspection).

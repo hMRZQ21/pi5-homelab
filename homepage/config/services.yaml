@@ -52,6 +52,14 @@
         container: immich_redis
         showStats: true
 
+    - Photo Review:
+        icon: mdi-calendar-check
+        href: http://{{HOMEPAGE_VAR_TAILNET_HOST}}:2290
+        description: Family photo-date review
+        server: my-docker
+        container: photo-review
+        showStats: true
+
 - System:
     - LAN Traffic:
         icon: mdi-lan
