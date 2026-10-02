@@ -18,6 +18,24 @@ CHUNK = 256 * 1024
 FIRST, MAXPAGE = 60, 240  # items sent per group up front / per 'show more'
 HERE = os.path.dirname(os.path.abspath(__file__))
 _cache = {'mtime': None, 'doc': {}, 'groups': [], 'light': [], 'index': {}, 'files': {}}
+_dcache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
+
+
+def dups():
+    p = os.path.join(DATA, 'dups.json')
+    if not os.path.exists(p):
+        return _dcache
+    m = os.path.getmtime(p)
+    if m != _dcache['mtime']:
+        g = json.load(open(p, encoding='utf-8'))['groups']
+        files = {a['id']: (a['t'], a['p'], a.get('v')) for x in g for a in x['members']}
+        _dcache.update(mtime=m, groups=g, index={x['id']: x for x in g}, files=files)
+    return _dcache
+
+
+def fileinfo(aid):
+    return groups()['files'].get(aid) or dups()['files'].get(aid)
+
 
 
 def groups():
@@ -35,8 +53,8 @@ def groups():
     return _cache
 
 
-def answers():
-    p = os.path.join(DATA, 'answers.jsonl')
+def answers(name='answers.jsonl'):
+    p = os.path.join(DATA, name)
     if not os.path.exists(p):
         return []
     out = []
@@ -122,6 +140,12 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?', 1)[0]
+        if path in ('/dups', '/dups.html'):
+            return self.send(200, open(os.path.join(HERE, 'dups.html'), encoding='utf-8').read(),
+                             'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
+        if path == '/api/dups/state':
+            return self.send(200, {'people': PEOPLE, 'groups': dups()['groups'], 'answers': answers('dup_answers.jsonl')},
+                             extra={'Cache-Control': 'no-store'})
         if path in ('/', '/index.html'):
             return self.send(200, open(os.path.join(HERE, 'index.html'), encoding='utf-8').read(),
                              'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
@@ -143,7 +167,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {'assets': g['assets'][o:o + n], 'total': len(g['assets'])})
         m = re.fullmatch(r'/img/([tp])/([0-9a-f-]{36})', path)
         if m:
-            f = groups()['files'].get(m.group(2))
+            f = fileinfo(m.group(2))
             if not f:
                 return self.send(404, {'error': 'unknown photo'})
             full = inside(THUMBS, f[0] if m.group(1) == 't' else f[1])
@@ -153,7 +177,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, open(full, 'rb').read(), ctype, {'Cache-Control': 'private, max-age=86400'})
         m = re.fullmatch(r'/vid/([0-9a-f-]{36})', path)
         if m:
-            f = groups()['files'].get(m.group(1))
+            f = fileinfo(m.group(1))
             if not f or not f[2]:
                 return self.send(404, {'error': 'unknown video'})
             kind, rel = f[2]
@@ -164,6 +188,8 @@ class H(BaseHTTPRequestHandler):
         return self.send(404, {'error': 'not found'})
 
     def do_POST(self):
+        if self.path == '/api/dups/decide':
+            return self.decide()
         if self.path != '/api/answer':
             return self.send(404, {'error': 'not found'})
         n = int(self.headers.get('Content-Length') or 0)
@@ -206,6 +232,42 @@ class H(BaseHTTPRequestHandler):
             os.fsync(f.fileno())
             fcntl.flock(f, fcntl.LOCK_UN)
         return self.send(200, {'ok': True, 'saved': rec})
+
+
+def _decide(self):
+    n = int(self.headers.get('Content-Length') or 0)
+    if n <= 0 or n > 1 << 20:
+        return self.send(400, {'error': 'bad size'})
+    try:
+        d = json.loads(self.rfile.read(n))
+    except ValueError:
+        return self.send(400, {'error': 'bad json'})
+    if d.get('who') not in PEOPLE:
+        return self.send(400, {'error': 'pick who is answering'})
+    idx, recs, ts = dups()['index'], [], datetime.datetime.now().isoformat(timespec='seconds')
+    for x in d.get('decisions') or []:
+        g = idx.get(x.get('group'))
+        if not g:
+            return self.send(400, {'error': 'unknown group'})
+        ids = {a['id'] for a in g['members']}
+        keep, trash = x.get('keep') or [], x.get('trash') or []
+        if not keep or set(keep) & set(trash) or set(keep) | set(trash) != ids or len(keep) + len(trash) != len(ids):
+            return self.send(400, {'error': 'every item must be either kept or trashed, at least one kept'})
+        recs.append({'ts': ts, 'who': d['who'], 'group': g['id'], 'keep': keep, 'trash': trash,
+                     'note': str(x.get('note') or '')[:500], 'client': self.client_address[0]})
+    if not recs:
+        return self.send(400, {'error': 'nothing to save'})
+    with open(os.path.join(DATA, 'dup_answers.jsonl'), 'a', encoding='utf-8') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        for r in recs:
+            f.write(json.dumps(r, ensure_ascii=False) + '\n')
+        f.flush()
+        os.fsync(f.fileno())
+        fcntl.flock(f, fcntl.LOCK_UN)
+    return self.send(200, {'ok': True, 'saved': recs})
+
+
+H.decide = _decide
 
 
 if __name__ == '__main__':

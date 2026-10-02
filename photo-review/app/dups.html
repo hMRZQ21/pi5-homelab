@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duplicates Review</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a66;--line:#e3e1dc;--acc:#2f6f5e;--acc-ink:#fff;--warn:#a5551c;--tile:#d9d6cf;--chip:#eef3f1;--keep:#2f8f5e;--trash:#b4432f}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe7;--muted:#9c9a94;--line:#33322f;--acc:#5fb39a;--acc-ink:#0e1a16;--warn:#e09a62;--tile:#3a3936;--chip:#22302b;--keep:#4fbf86;--trash:#e0715c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.brand{font-weight:600;font-size:17px}.muted{color:var(--muted);font-size:13px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;cursor:pointer}
+.pill.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px}
+select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.btn{border:0;border-radius:10px;padding:9px 16px;cursor:pointer}.btn.pri{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn.sec{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.rh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:8px}
+.chip{background:var(--chip);border-radius:7px;padding:2px 8px;font-size:12px}.chip.w{background:var(--warn);color:#fff}
+.done{color:var(--keep);font-size:12px;font-weight:600}
+.mem{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.m{border:3px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--card);color:var(--ink);padding:0;text-align:left;font:inherit;position:relative}
+.m.keep{border-color:var(--keep)}.m.trash{border-color:var(--trash)}.m.trash img{opacity:.55}
+.m img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--tile)}
+.badge{position:absolute;top:6px;left:6px;font-size:11px;font-weight:700;color:#fff;border-radius:5px;padding:2px 7px}
+.keep .badge{background:var(--keep)}.trash .badge{background:var(--trash)}
+.play{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;font-size:11px;padding:2px 7px}
+.meta{padding:6px 8px;font-size:12px;line-height:1.35;overflow-wrap:anywhere}.meta b{font-weight:600}
+.ok{color:var(--keep)}.bad{color:var(--warn)}
+.carry{font-size:12px;color:var(--warn);margin-top:6px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin:12px 0 30px}
+.msg{font-size:13px;min-height:18px}.msg.err{color:var(--warn)}.msg.ok{color:var(--keep)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;flex-direction:column;padding:12px;z-index:9;overflow:auto}
+.ov.on{display:flex}.cmp{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start}
+.cmp figure{margin:0;flex:1 1 300px;max-width:49%;min-width:260px;color:#ddd;font-size:12px}
+.cmp img,.cmp video{width:100%;max-height:78vh;object-fit:contain;background:#000;border-radius:6px;border:3px solid transparent}
+.cmp .keep img,.cmp .keep video{border-color:var(--keep)}.cmp .trash img,.cmp .trash video{border-color:var(--trash)}
+.ovbar{display:flex;justify-content:center;gap:8px;margin-top:10px}
+@media (max-width:600px){.cmp figure{max-width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><div class="brand">Duplicates Review</div><div class="muted" id="prog">Loading…</div></div>
+    <div class="muted" id="who">Who's deciding?</div>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="ctl">
+    <select id="flt"><option value="all">All groups</option><option value="copy">Copies</option><option value="review">Disputed dates</option><option value="burst">Bursts (similar shots)</option></select>
+    <label class="muted"><input type="checkbox" id="und"> Undecided only</label>
+    <span style="flex:1"></span>
+    <button class="btn sec" id="pp">←</button><span class="muted" id="pg"></span><button class="btn sec" id="np">→</button>
+  </div>
+  <p class="muted">Green = keep, red = trash. Tap a tile to switch it. Nothing is deleted from this page — it only records your decisions; trashing happens afterwards, logged, and can be undone for 30 days.</p>
+  <div id="list"></div>
+  <div class="foot"><div class="msg" id="msg"></div><button class="btn pri" id="save">Approve this page</button></div>
+</div>
+<div class="ov" id="ov"><div class="cmp" id="cmp"></div><div class="ovbar"><button class="btn pri" id="ovc">Close</button></div></div>
+<script>
+const PER=20,$=id=>document.getElementById(id);
+const el=(t,p={},k=[])=>{const e=document.createElement(t);Object.assign(e,p);for(const c of k)e.append(c);return e};
+let S={people:[],groups:[],answers:[]},who='Hussam',page=0,cur={},view=[];
+try{who=localStorage.getItem('dr_who')||'Hussam'}catch(e){}
+const CLS={copy:'copy',review:'dates disagree',burst:'burst — similar shots'};
+function latest(gid){let r=null;for(const a of S.answers)if(a.group===gid&&a.who===who)r=a;return r}
+function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep:g.default_keep)}return cur[g.id]}
+const mb=b=>b>=1e6?(b/1e6).toFixed(1)+' MB':Math.round(b/1e3)+' KB';
+function fmt(d){return d.replace(' ',' · ')}
+function trustTxt(t){return t?el('span',{className:'ok',textContent:'✓ trusted date'}):el('span',{className:'bad',textContent:'⚠ date not trusted'})}
+function carry(g,keep){ // date the single keeper will get, if it lacks a trusted date
+  if(keep.size!==1)return'';const k=g.members.find(m=>keep.has(m.id));if(k.trust)return'';
+  const t=g.members.find(m=>m.trust&&m.id!==k.id);return t&&t.date.slice(0,16)!==k.date.slice(0,16)?t.date:''}
+async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};renderWho();render()}
+function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('dr_who',p)}catch(e){};cur={};renderWho();render()};w.append(b)}}
+function filtered(){const f=$('flt').value,u=$('und').checked;return S.groups.filter(g=>(f==='all'||g.cls===f)&&(!u||!latest(g.id)))}
+function render(){
+  const done=S.groups.filter(g=>latest(g.id)).length;$('prog').textContent=`${done} of ${S.groups.length} groups decided by ${who}`;$('bar').style.width=100*done/S.groups.length+'%';
+  view=filtered();const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;$('pg').textContent=`Page ${page+1} of ${pages} · ${view.length} groups`;
+  const list=$('list');list.replaceChildren();
+  for(const g of view.slice(page*PER,page*PER+PER))list.append(rowFor(g));
+  $('save').textContent=`Approve this page (${Math.min(PER,view.length-page*PER)})`;window.scrollTo(0,0)}
+function rowFor(g){
+  const keep=state(g),box=el('div',{className:'row'});
+  const draw=()=>{
+    const head=el('div',{className:'rh'},[el('b',{textContent:`${g.members.length} items`}),el('span',{className:'chip'+(g.cls==='copy'?'':' w'),textContent:CLS[g.cls]})]);
+    if(latest(g.id))head.append(el('span',{className:'done',textContent:'✓ decided'}));
+    const grid=el('div',{className:'mem'});
+    for(const m of g.members){
+      const k=keep.has(m.id),kids=[el('img',{src:'img/t/'+m.id,loading:'lazy',alt:m.name}),el('span',{className:'badge',textContent:k?'KEEP':'TRASH'})];
+      if(m.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
+      const meta=el('div',{className:'meta'},[el('b',{textContent:m.name}),el('br'),`${m.wh} · ${mb(m.bytes)} · ${m.name.split('.').pop().toUpperCase()}`,el('br'),fmt(m.date),' ',trustTxt(m.trust),el('br'),m.cam||'no camera tag',m.gps?' · GPS':'']);
+      if(m.hdd)meta.append(el('br'),el('span',{className:'muted',textContent:'HDD: '+m.hdd.split('|')[0]}));
+      const t=el('button',{className:'m '+(k?'keep':'trash'),title:'Tap to switch keep / trash'},[...kids,meta]);
+      t.onclick=()=>{k?keep.delete(m.id):keep.add(m.id);draw()};grid.append(t)}
+    const c=carry(g,keep),parts=[head,grid];
+    if(c)parts.push(el('div',{className:'carry',textContent:`The kept copy's date isn't trusted — it will be set to ${c} (from the trusted copy).`}));
+    if(!keep.size)parts.push(el('div',{className:'carry',textContent:'Keep at least one.'}));
+    const b1=el('button',{className:'btn sec',textContent:'Compare large'});b1.onclick=()=>compare(g);
+    const b2=el('button',{className:'btn sec',textContent:'Not duplicates — keep all'});b2.onclick=()=>{g.members.forEach(m=>keep.add(m.id));draw()};
+    const b3=el('button',{className:'btn sec',textContent:'Use suggestion'});b3.onclick=()=>{keep.clear();g.default_keep.forEach(i=>keep.add(i));draw()};
+    parts.push(el('div',{className:'acts'},[b1,b2,b3]));box.replaceChildren(...parts)};
+  draw();return box}
+function compare(g){const keep=state(g),c=$('cmp');c.replaceChildren();
+  for(const m of g.members){const k=keep.has(m.id);const media=m.type==='VIDEO'?el('video',{src:'vid/'+m.id,poster:'img/p/'+m.id,controls:true,playsInline:true,preload:'metadata'}):el('img',{src:'img/p/'+m.id,alt:m.name});
+    c.append(el('figure',{className:k?'keep':'trash'},[media,el('figcaption',{textContent:`${k?'KEEP':'TRASH'} · ${m.name} · ${m.wh} · ${mb(m.bytes)} · ${m.date}${m.trust?' (trusted)':''}`})]))}
+  $('ov').classList.add('on')}
+$('ovc').onclick=()=>{$('cmp').querySelectorAll('video').forEach(v=>v.pause());$('ov').classList.remove('on')};
+$('flt').onchange=()=>{page=0;render()};$('und').onchange=()=>{page=0;render()};
+$('pp').onclick=()=>{if(page>0){page--;render()}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render()}};
+function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c}
+$('save').onclick=async()=>{
+  const gs=view.slice(page*PER,page*PER+PER);if(!gs.length)return;
+  if(gs.some(g=>!state(g).size))return setMsg('Every group needs at least one kept item.','err');
+  const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i))}});
+  $('save').disabled=true;
+  try{const r=await fetch('api/dups/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({who,decisions})});const d=await r.json();if(!r.ok)throw new Error(d.error||'save failed');
+    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();setMsg(`Saved ${d.saved.length} decisions.`,'ok')}
+  catch(e){setMsg('Could not save: '+e.message,'err')}finally{$('save').disabled=false}};
+load().catch(e=>{$('list').textContent='Could not load: '+e.message});
+</script>
+</body>
+</html>
