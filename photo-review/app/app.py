@@ -8,14 +8,16 @@ Applying answers to Immich is a separate, logged step.
 """
 import datetime, fcntl, json, os, re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
 
 DATA, THUMBS, ENC, ORIG = '/data', '/thumbs', '/enc', '/orig'
 PEOPLE = ['Reem', 'Mohammed', 'Hussam', 'Wissam', 'Ghazi']
 OWNERS = PEOPLE + ['Family', 'Someone else']
 VTYPES = {'mp4': 'video/mp4', 'mov': 'video/mp4', 'm4v': 'video/mp4', '3gp': 'video/3gpp', 'mkv': 'video/x-matroska'}
 CHUNK = 256 * 1024
+FIRST, MAXPAGE = 60, 240  # items sent per group up front / per 'show more'
 HERE = os.path.dirname(os.path.abspath(__file__))
-_cache = {'mtime': None, 'doc': {}, 'groups': [], 'index': {}, 'files': {}}
+_cache = {'mtime': None, 'doc': {}, 'groups': [], 'light': [], 'index': {}, 'files': {}}
 
 
 def groups():
@@ -28,7 +30,8 @@ def groups():
         for grp in g:
             for a in grp['assets']:
                 files[a['id']] = (a['t'], a['p'], a.get('v'))
-        _cache.update(mtime=m, doc=doc, groups=g, index={x['id']: x for x in g}, files=files)
+        light = [dict(x, assets=x['assets'][:FIRST], total=len(x['assets'])) for x in g]
+        _cache.update(mtime=m, doc=doc, groups=g, light=light, index={x['id']: x for x in g}, files=files)
     return _cache
 
 
@@ -127,7 +130,17 @@ class H(BaseHTTPRequestHandler):
         if path == '/api/state':
             c = groups()
             return self.send(200, {'people': PEOPLE, 'owners': OWNERS, 'round_title': c['doc'].get('round_title', ''),
-                                   'groups': c['groups'], 'answers': answers()}, extra={'Cache-Control': 'no-store'})
+                                   'groups': c['light'], 'answers': answers()}, extra={'Cache-Control': 'no-store'})
+        if path == '/api/more':
+            qs = {k: v[0] for k, v in parse_qs(urlsplit(self.path).query).items()}
+            g = groups()['index'].get(qs.get('g', ''))
+            try:
+                o, n = int(qs.get('o', 0)), min(int(qs.get('n', 120)), MAXPAGE)
+            except ValueError:
+                return self.send(400, {'error': 'bad numbers'})
+            if not g or o < 0 or n <= 0:
+                return self.send(400, {'error': 'unknown group'})
+            return self.send(200, {'assets': g['assets'][o:o + n], 'total': len(g['assets'])})
         m = re.fullmatch(r'/img/([tp])/([0-9a-f-]{36})', path)
         if m:
             f = groups()['files'].get(m.group(2))

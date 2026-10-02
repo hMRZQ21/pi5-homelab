@@ -59,6 +59,9 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 .ov .bar2{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center}
 .ov .cap{color:#ddd;font-size:13px;margin-top:8px;text-align:center;overflow-wrap:anywhere}
 .jumpq{display:inline-block;margin:0 0 12px;font-size:14px;color:var(--acc)}
+.mode{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:13px;color:var(--muted)}
+.more{display:block;width:100%;margin-top:10px}
+.cnt{margin-left:auto}
 .note{color:var(--muted);font-size:12px;margin-top:16px}
 </style>
 </head>
@@ -93,7 +96,7 @@ const MONTHS=['January','February','March','April','May','June','July','August',
 const OWNER_HELP={Family:'A shared family camera',"Someone else":'Friends or relatives sent these to us'};
 const $=id=>document.getElementById(id);
 const el=(tag,props={},kids=[])=>{const e=document.createElement(tag);Object.assign(e,props);for(const k of kids)e.append(k);return e};
-let S={people:[],owners:[],groups:[],answers:[]},gi=0,who=null,choice=null,owners=new Set(),excluded=new Set(),ovIdx=0;
+let S={people:[],owners:[],groups:[],answers:[]},gi=0,who=null,choice=null,owners=new Set(),excluded=new Set(),ovIdx=0,markMode=false;
 try{who=localStorage.getItem('pr_who')}catch(e){}
 try{gi=+(localStorage.getItem('pr_gi')||0)}catch(e){}
 function fmtDate(s){const d=new Date(s.replace(' ','T'));return d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getFullYear()}
@@ -101,7 +104,7 @@ function yearsLabel(ys){if(!ys.length)return'';return ys.length>2?ys[0]+'–'+ys
 function answersFor(id){return S.answers.filter(a=>a.group===id)}
 function latestByPerson(id){const m={};for(const a of answersFor(id))m[a.who]=a;return Object.values(m)}
 function nVid(g){return g.assets.filter(a=>a.type==='VIDEO').length}
-function itemsLabel(g,n){const v=nVid(g),p=g.assets.length-v;n=n??g.assets.length;return v&&p?n+' photos & videos':n+(v?' videos':' photos')}
+function itemsLabel(g,n){const v=nVid(g),p=g.assets.length-v;n=(n??g.total??g.assets.length).toLocaleString();return v&&p?n+' photos & videos':n+(v?' videos':' photos')}
 function ansText(a){if(a.unsure)return'not sure';if(a.kind==='owner')return(a.owners||[]).join(', ');return a.year+(a.month?', '+MONTHS[a.month-1]:'')}
 async function load(){
   const r=await fetch('api/state',{cache:'no-store'});S=await r.json();
@@ -109,7 +112,7 @@ async function load(){
 }
 function renderWho(){
   const w=$('who');w.replaceChildren('Who\'s answering?');
-  for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};renderWho();setMsg('')};w.append(b)}
+  for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};renderWho();render()};w.append(b)}
 }
 function setMsg(t,cls=''){const m=$('msg');if(m){m.textContent=t;m.className='msg '+cls}}
 function previous(g){
@@ -117,17 +120,30 @@ function previous(g){
   if(prevA.length){prev.append(el('b',{textContent:'Answers so far'}));for(const a of prevA)prev.append(el('div',{textContent:`${a.who}: ${ansText(a)}${a.excluded&&a.excluded.length?` (${a.excluded.length} marked odd one out)`:''}${a.note?' — “'+a.note+'”':''}`}))}
   return prev;
 }
+function tile(a,i){const kids=[el('img',{src:'img/t/'+a.id,alt:a.name,loading:'lazy'})];if(a.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
+  const b=el('button',{className:'ph'+(excluded.has(a.id)?' out':''),title:a.name},kids);b.onclick=()=>markMode?toggleOut(a.id):openOv(i);b.oncontextmenu=e=>{e.preventDefault();toggleOut(a.id)};b.dataset.id=a.id;return b}
 function gridFor(g){
-  const grid=el('div',{className:'grid'});
-  g.assets.forEach((a,i)=>{const kids=[el('img',{src:'img/t/'+a.id,alt:a.name,loading:'lazy'})];if(a.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
-    const b=el('button',{className:'ph',title:a.name},kids);b.onclick=()=>openOv(i);b.oncontextmenu=e=>{e.preventDefault();toggleOut(a.id)};b.dataset.id=a.id;grid.append(b)});
-  return grid;
+  const grid=el('div',{className:'grid'});g.assets.forEach((a,i)=>grid.append(tile(a,i)));
+  const total=g.total??g.assets.length,wrap=el('div',{},[grid]);
+  const vb=el('button',{className:'pill'+(markMode?'':' on'),textContent:'View it bigger'}),mb=el('button',{className:'pill'+(markMode?' on':''),textContent:'Mark odd ones out'});
+  vb.onclick=()=>{markMode=false;vb.classList.add('on');mb.classList.remove('on')};mb.onclick=()=>{markMode=true;mb.classList.add('on');vb.classList.remove('on')};
+  const mode=el('div',{className:'mode'},['Tap a photo to:',vb,mb,el('span',{className:'cnt',id:'cnt'})]);
+  if(g.assets.length<total){
+    const more=el('button',{className:'btn sec more'});const lab=()=>{const left=total-g.assets.length;more.textContent=`Show more (${Math.min(120,left)} of ${left.toLocaleString()} left)`};lab();
+    more.onclick=async()=>{more.disabled=true;try{const r=await fetch(`api/more?g=${encodeURIComponent(g.id)}&o=${g.assets.length}&n=120`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+      const start=g.assets.length;d.assets.forEach((a,k)=>{g.assets.push(a);grid.append(tile(a,start+k))});if(g.assets.length>=total)more.remove();else{lab();more.disabled=false}}
+      catch(e){more.textContent='Could not load more — tap to retry';more.disabled=false}};
+    wrap.append(more,el('div',{className:'hint',textContent:`Showing oldest first. ${total.toLocaleString()} in total.`}));
+  }
+  return el('div',{},[mode,wrap]);
 }
+function updCnt(){const c=$('cnt');if(c)c.textContent=excluded.size?excluded.size+' marked odd one out':''}
 function render(){
-  const total=S.groups.length,done=S.groups.filter(g=>latestByPerson(g.id).length).length;
-  $('prog').textContent=`${S.round_title||'Review'} · ${done} of ${total} answered`;
+  const mine=g=>S.answers.some(a=>a.group===g.id&&(!who||a.who===who));
+  const total=S.groups.length,done=S.groups.filter(mine).length;
+  $('prog').textContent=`${S.round_title||'Review'} · ${done} of ${total} answered${who?' by '+who:''}`;
   $('bar').style.width=(total?100*done/total:0)+'%';
-  const j=$('jump');j.replaceChildren(...S.groups.map((g,i)=>el('option',{value:i,textContent:`${latestByPerson(g.id).length?'✓ ':''}${g.kind==='owner'?'Whose? ':'When? '}${g.title} · ${itemsLabel(g)}`})));j.value=gi;
+  const j=$('jump');j.replaceChildren(...S.groups.map((g,i)=>el('option',{value:i,textContent:`${mine(g)?'✓ ':''}${g.kind==='owner'?'Whose? ':'When? '}${g.title} · ${itemsLabel(g)}`})));j.value=gi;
   try{localStorage.setItem('pr_gi',gi)}catch(e){}
   const g=S.groups[gi],card=$('card');choice=null;owners=new Set();excluded=new Set();
   if(!g){card.replaceChildren(el('p',{textContent:'Nothing to review right now.'}));return}
@@ -137,7 +153,10 @@ function render(){
   const post=async body=>{
     save.disabled=true;
     try{const r=await fetch('api/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
-      if(!r.ok)throw new Error(d.error||'save failed');S.answers.push(d.saved);gi=Math.min(gi+1,S.groups.length-1);render();setMsg('Saved. Thank you!','ok');window.scrollTo(0,0)}
+      if(!r.ok)throw new Error(d.error||'save failed');S.answers.push(d.saved);
+      const n=S.groups.length,mine=new Set(S.answers.filter(a=>a.who===who).map(a=>a.group));let nx=-1;
+      for(let k=1;k<=n;k++){const j=(gi+k)%n;if(!mine.has(S.groups[j].id)){nx=j;break}}
+      if(nx>=0){gi=nx;render();setMsg('Saved. Thank you!','ok')}else{render();setMsg('Saved — you have answered everything. Thank you!','ok')}window.scrollTo(0,0)}
     catch(e){setMsg('Could not save: '+e.message,'err');save.disabled=false}
   };
   if(g.kind==='owner')return renderOwner(g,card,note,save,foot,post);
@@ -161,10 +180,10 @@ function renderOwner(g,card,note,save,foot,post){
   card.replaceChildren(
     el('h1',{textContent:isCam?'Camera: '+g.title:g.title}),
     el('div',{className:'facts'},facts),
-    el('div',{className:'conflict',textContent:isCam?`These are ${g.assets.length} examples taken with this camera. Whose camera or phone was it?`:`Old family videos from CDs/DVDs. Whose are they?${g.suggest?' Hussam thinks: '+g.suggest+'.':''}`}),
+    el('div',{className:'conflict',textContent:isCam?`Everything taken with this camera is below. Whose camera or phone was it?`:`Old family videos from CDs/DVDs. Whose are they?${g.suggest?' Hussam thinks: '+g.suggest+'.':''}`}),
     el('a',{className:'jumpq',href:'#q',textContent:'Skip to the question ↓'}),
     gridFor(g),
-    el('div',{className:'hint',textContent:'Tap to see it bigger (videos play). If one doesn\'t belong, open it and press "Mark: odd one out".'}),
+    el('div',{className:'hint',textContent:'Videos play when opened. If something doesn\'t belong, switch to "Mark odd ones out" and tap it.'}),
     el('div',{className:'q',id:'q'},[el('h2',{textContent:isCam?'Whose camera was this? (pick all that apply)':'Whose videos are these? (pick all that apply)'}),opts,note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
   );
 }
@@ -206,14 +225,14 @@ function renderDate(g,card,note,save,foot,post){
     el('div',{className:'conflict',textContent:say}),
     el('a',{className:'jumpq',href:'#q',textContent:'Skip to the question ↓'}),
     gridFor(g),
-    el('div',{className:'hint',textContent:'Tap to see it bigger (videos play). If one is from a different event, open it and press "Mark: odd one out".'}),
+    el('div',{className:'hint',textContent:'Videos play when opened. If something is from a different event, switch to "Mark odd ones out" and tap it.'}),
     el('div',{className:'q',id:'q'},[el('h2',{textContent:tierMonth?'Which month? (and is the year right?)':'What year were these taken?'}),opts,
       el('div',{className:'row'},[el('label',{htmlFor:'month',textContent:tierMonth?'Month:':'Month (optional):'}),ms,monthHint?el('span',{className:'hint',style:'margin:0',textContent:monthHint}):'']),
       note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
   );
 }
 function pick(btn,c){document.querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));btn.classList.add('on');choice=c;setMsg('')}
-function toggleOut(id){excluded.has(id)?excluded.delete(id):excluded.add(id);document.querySelectorAll('.ph').forEach(p=>p.classList.toggle('out',excluded.has(p.dataset.id)));updOv()}
+function toggleOut(id){excluded.has(id)?excluded.delete(id):excluded.add(id);document.querySelectorAll('.ph').forEach(p=>p.classList.toggle('out',excluded.has(p.dataset.id)));updCnt();updOv()}
 function openOv(i){ovIdx=i;$('ov').classList.add('on');updOv()}
 function stopVid(){const v=$('ovVid');v.pause();v.removeAttribute('src');v.load()}
 function updOv(){const g=S.groups[gi];if(!g||!$('ov').classList.contains('on'))return;const a=g.assets[ovIdx],v=$('ovVid'),im=$('ovImg');
