@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Duplicates Review</title>
+<title>Family Photo Review · Duplicates</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a66;--line:#e3e1dc;--acc:#2f6f5e;--acc-ink:#fff;--warn:#a5551c;--tile:#d9d6cf;--chip:#eef3f1;--keep:#2f8f5e;--trash:#b4432f}
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe7;--muted:#9c9a94;--line:#33322f;--acc:#5fb39a;--acc-ink:#0e1a16;--warn:#e09a62;--tile:#3a3936;--chip:#22302b;--keep:#4fbf86;--trash:#e0715c}}
@@ -36,6 +36,8 @@ select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin:12px 0 30px}
 .msg{font-size:13px;min-height:18px}.msg.err{color:var(--warn)}.msg.ok{color:var(--keep)}
+.tabs{display:flex;gap:6px;margin-top:6px}.tabs a{font-size:13px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none}.tabs a.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.others{font-size:12px;color:var(--muted);margin-top:6px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;flex-direction:column;padding:12px;z-index:9;overflow:auto}
 .ov.on{display:flex}.cmp{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start}
 .cmp figure{margin:0;flex:1 1 300px;max-width:49%;min-width:260px;color:#ddd;font-size:12px}
@@ -48,7 +50,7 @@ select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-
 <body>
 <div class="wrap">
   <div class="top">
-    <div><div class="brand">Duplicates Review</div><div class="muted" id="prog">Loading…</div></div>
+    <div><div class="brand">Family Photo Review</div><div class="muted" id="prog">Loading…</div><div class="tabs"><a href="./">Photo questions</a><a class="on" href="dups">Duplicates</a></div></div>
     <div class="muted" id="who">Who's deciding?</div>
   </div>
   <div class="bar"><i id="bar"></i></div>
@@ -58,7 +60,7 @@ select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-
     <span style="flex:1"></span>
     <button class="btn sec" id="pp">←</button><span class="muted" id="pg"></span><button class="btn sec" id="np">→</button>
   </div>
-  <p class="muted">Green = keep, red = trash. Tap a tile to switch it. Nothing is deleted from this page — it only records your decisions; trashing happens afterwards, logged, and can be undone for 30 days.</p>
+  <p class="muted">Each box is the same photo saved more than once. <b>Green = keep, red = remove the extra copy.</b> Tap a photo to switch it. "Compare large" shows them side by side. If they are actually <i>different</i> photos, press "Not duplicates — keep all". Nothing is deleted here — Hussam applies the answers later, and anything removed can be restored for 30 days.</p>
   <div id="list"></div>
   <div class="foot"><div class="msg" id="msg"></div><button class="btn pri" id="save">Approve this page</button></div>
 </div>
@@ -66,22 +68,22 @@ select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-
 <script>
 const PER=20,$=id=>document.getElementById(id);
 const el=(t,p={},k=[])=>{const e=document.createElement(t);Object.assign(e,p);for(const c of k)e.append(c);return e};
-let S={people:[],groups:[],answers:[]},who='Hussam',page=0,cur={},view=[];
-try{who=localStorage.getItem('dr_who')||'Hussam'}catch(e){}
-const CLS={copy:'copy',review:'dates disagree',burst:'burst — similar shots'};
+let S={people:[],groups:[],answers:[]},who=null,page=0,cur={},view=[];
+try{who=localStorage.getItem('pr_who')}catch(e){}
+const CLS={copy:'same photo',review:'same photo, dates disagree',burst:'similar shots — keep all unless you want to pick'};
 function latest(gid){let r=null;for(const a of S.answers)if(a.group===gid&&a.who===who)r=a;return r}
 function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep:g.default_keep)}return cur[g.id]}
 const mb=b=>b>=1e6?(b/1e6).toFixed(1)+' MB':Math.round(b/1e3)+' KB';
 function fmt(d){return d.replace(' ',' · ')}
-function trustTxt(t){return t?el('span',{className:'ok',textContent:'✓ trusted date'}):el('span',{className:'bad',textContent:'⚠ date not trusted'})}
+function trustTxt(t){return t?el('span',{className:'ok',textContent:'✓ camera date'}):el('span',{className:'bad',textContent:'⚠ date may be wrong'})}
 function carry(g,keep){ // date the single keeper will get, if it lacks a trusted date
   if(keep.size!==1)return'';const k=g.members.find(m=>keep.has(m.id));if(k.trust)return'';
   const t=g.members.find(m=>m.trust&&m.id!==k.id);return t&&t.date.slice(0,16)!==k.date.slice(0,16)?t.date:''}
 async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};renderWho();render()}
-function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('dr_who',p)}catch(e){};cur={};renderWho();render()};w.append(b)}}
+function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};renderWho();render()};w.append(b)}}
 function filtered(){const f=$('flt').value,u=$('und').checked;return S.groups.filter(g=>(f==='all'||g.cls===f)&&(!u||!latest(g.id)))}
 function render(){
-  const done=S.groups.filter(g=>latest(g.id)).length;$('prog').textContent=`${done} of ${S.groups.length} groups decided by ${who}`;$('bar').style.width=100*done/S.groups.length+'%';
+  const done=S.groups.filter(g=>latest(g.id)).length;$('prog').textContent=who?`Duplicates · ${done} of ${S.groups.length} decided by ${who}`:'Duplicates · pick who is deciding (top of the page)';$('bar').style.width=100*done/S.groups.length+'%';
   view=filtered();const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;$('pg').textContent=`Page ${page+1} of ${pages} · ${view.length} groups`;
   const list=$('list');list.replaceChildren();
   for(const g of view.slice(page*PER,page*PER+PER))list.append(rowFor(g));
@@ -96,11 +98,14 @@ function rowFor(g){
       const k=keep.has(m.id),kids=[el('img',{src:'img/t/'+m.id,loading:'lazy',alt:m.name}),el('span',{className:'badge',textContent:k?'KEEP':'TRASH'})];
       if(m.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
       const meta=el('div',{className:'meta'},[el('b',{textContent:m.name}),el('br'),`${m.wh} · ${mb(m.bytes)} · ${m.name.split('.').pop().toUpperCase()}`,el('br'),fmt(m.date),' ',trustTxt(m.trust),el('br'),m.cam||'no camera tag',m.gps?' · GPS':'']);
-      if(m.hdd)meta.append(el('br'),el('span',{className:'muted',textContent:'HDD: '+m.hdd.split('|')[0]}));
+      if(m.hdd)meta.append(el('br'),el('span',{className:'muted',textContent:'Folder: '+m.hdd.split('|')[0]}));
       const t=el('button',{className:'m '+(k?'keep':'trash'),title:'Tap to switch keep / trash'},[...kids,meta]);
       t.onclick=()=>{k?keep.delete(m.id):keep.add(m.id);draw()};grid.append(t)}
     const c=carry(g,keep),parts=[head,grid];
-    if(c)parts.push(el('div',{className:'carry',textContent:`The kept copy's date isn't trusted — it will be set to ${c} (from the trusted copy).`}));
+    const oth={};for(const a of S.answers)if(a.group===g.id&&a.who!==who)oth[a.who]=a;
+    const ol=Object.values(oth).map(a=>`${a.who}: ${a.trash.length?`keeps ${a.keep.length} · removes ${a.trash.length}`:'keep all'}`);
+    if(ol.length)parts.push(el('div',{className:'others',textContent:'Others: '+ol.join(' · ')}));
+    if(c)parts.push(el('div',{className:'carry',textContent:`The kept copy's date may be wrong — it will get ${c} from the copy with the camera date.`}));
     if(!keep.size)parts.push(el('div',{className:'carry',textContent:'Keep at least one.'}));
     const b1=el('button',{className:'btn sec',textContent:'Compare large'});b1.onclick=()=>compare(g);
     const b2=el('button',{className:'btn sec',textContent:'Not duplicates — keep all'});b2.onclick=()=>{g.members.forEach(m=>keep.add(m.id));draw()};
@@ -116,6 +121,7 @@ $('flt').onchange=()=>{page=0;render()};$('und').onchange=()=>{page=0;render()};
 $('pp').onclick=()=>{if(page>0){page--;render()}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render()}};
 function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c}
 $('save').onclick=async()=>{
+  if(!who)return setMsg('First pick who is deciding (top of the page).','err');
   const gs=view.slice(page*PER,page*PER+PER);if(!gs.length)return;
   if(gs.some(g=>!state(g).size))return setMsg('Every group needs at least one kept item.','err');
   const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i))}});

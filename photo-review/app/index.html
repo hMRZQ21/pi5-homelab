@@ -58,6 +58,7 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 .ov video{width:min(100%,720px)}
 .ov .bar2{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center}
 .ov .cap{color:#ddd;font-size:13px;margin-top:8px;text-align:center;overflow-wrap:anywhere}
+.tabs{display:flex;gap:6px;margin-top:6px}.tabs a{font-size:13px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none}.tabs a.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .jumpq{display:inline-block;margin:0 0 12px;font-size:14px;color:var(--acc)}
 .mode{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:13px;color:var(--muted)}
 .more{display:block;width:100%;margin-top:10px}
@@ -68,7 +69,7 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 <body>
 <div class="wrap">
   <div class="top">
-    <div><div class="brand">Family Photo Review</div><div class="prog" id="prog">Loading…</div></div>
+    <div><div class="brand">Family Photo Review</div><div class="prog" id="prog">Loading…</div><div class="tabs"><a class="on" href="./">Photo questions</a><a href="dups">Duplicates</a></div></div>
     <div class="who" id="who">Who's answering?</div>
   </div>
   <div class="bar"><i id="bar"></i></div>
