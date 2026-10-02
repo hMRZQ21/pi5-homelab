@@ -1,6 +1,7 @@
 name: photo-review
 
-# Family photo-date review page. Records answers only; it never writes to Immich.
+# Family review page (photo/video dates, whose camera). Records answers only; it never writes to Immich.
+# Immich folders are mounted read-only: thumbnails, transcoded videos, originals (for videos without a transcode).
 # Answers: /srv/photo-review/answers.jsonl (append-only). Groups: /srv/photo-review/groups.json.
 services:
   photo-review:
@@ -17,3 +18,5 @@ services:
       - ./app:/app:ro
       - /srv/photo-review:/data
       - /srv/immich/library/thumbs:/thumbs:ro
+      - /srv/immich/library/encoded-video:/enc:ro
+      - /srv/immich/library/library:/orig:ro

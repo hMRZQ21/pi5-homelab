@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Family Photo Dates</title>
+<title>Family Photo Review</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a66;--line:#e3e1dc;--acc:#2f6f5e;--acc-ink:#fff;--warn:#a5551c;--tile:#d9d6cf;--chip:#eef3f1;--ok:#2f6f5e}
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe7;--muted:#9c9a94;--line:#33322f;--acc:#5fb39a;--acc-ink:#0e1a16;--warn:#e09a62;--tile:#3a3936;--chip:#22302b;--ok:#5fb39a}}
@@ -28,9 +28,10 @@ h1{font-size:22px;margin:0 0 4px;overflow-wrap:anywhere}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
 .ph{aspect-ratio:1;border-radius:8px;background:var(--tile);position:relative;cursor:pointer;overflow:hidden;border:2px solid transparent;padding:0}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .play{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;font-size:11px;padding:2px 7px;pointer-events:none}
 .ph.out{border-color:var(--warn)}
 .ph.out img{opacity:.45}
-.ph.out::after{content:"different event";position:absolute;top:4px;left:4px;right:4px;font-size:10px;background:var(--warn);color:#fff;border-radius:4px;text-align:center}
+.ph.out::after{content:"odd one out";position:absolute;top:4px;left:4px;right:4px;font-size:10px;background:var(--warn);color:#fff;border-radius:4px;text-align:center}
 .hint{margin:8px 0 0;font-size:13px;color:var(--muted)}
 .q{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .q h2{font-size:17px;margin:0 0 10px}
@@ -53,9 +54,10 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 .msg.err{color:var(--warn)} .msg.ok{color:var(--ok)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;z-index:9}
 .ov.on{display:flex}
-.ov img{max-width:100%;max-height:78vh;border-radius:6px}
+.ov img,.ov video{max-width:100%;max-height:74vh;border-radius:6px;background:#000}
+.ov video{width:min(100%,720px)}
 .ov .bar2{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center}
-.ov .cap{color:#ddd;font-size:13px;margin-top:8px;text-align:center}
+.ov .cap{color:#ddd;font-size:13px;margin-top:8px;text-align:center;overflow-wrap:anywhere}
 .jumpq{display:inline-block;margin:0 0 12px;font-size:14px;color:var(--acc)}
 .note{color:var(--muted);font-size:12px;margin-top:16px}
 </style>
@@ -63,7 +65,7 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 <body>
 <div class="wrap">
   <div class="top">
-    <div><div class="brand">Family Photo Dates</div><div class="prog" id="prog">Loading…</div></div>
+    <div><div class="brand">Family Photo Review</div><div class="prog" id="prog">Loading…</div></div>
     <div class="who" id="who">Who's answering?</div>
   </div>
   <div class="bar"><i id="bar"></i></div>
@@ -77,25 +79,30 @@ textarea{width:100%;min-height:54px;margin-top:12px;border:1px solid var(--line)
 </div>
 <div class="ov" id="ov">
   <img id="ovImg" alt="">
+  <video id="ovVid" controls playsinline preload="metadata"></video>
   <div class="cap" id="ovCap"></div>
   <div class="bar2">
     <button class="btn sec" id="ovPrev" style="color:#fff;border-color:#666">←</button>
-    <button class="btn sec" id="ovOut" style="color:#fff;border-color:#666">Mark: different event</button>
+    <button class="btn sec" id="ovOut" style="color:#fff;border-color:#666">Mark: odd one out</button>
     <button class="btn sec" id="ovNext" style="color:#fff;border-color:#666">→</button>
     <button class="btn pri" id="ovClose">Close</button>
   </div>
 </div>
 <script>
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const OWNER_HELP={Family:'A shared family camera',"Someone else":'Friends or relatives sent these to us'};
 const $=id=>document.getElementById(id);
 const el=(tag,props={},kids=[])=>{const e=document.createElement(tag);Object.assign(e,props);for(const k of kids)e.append(k);return e};
-let S={people:[],groups:[],answers:[]},gi=0,who=null,choice=null,excluded=new Set(),ovIdx=0;
+let S={people:[],owners:[],groups:[],answers:[]},gi=0,who=null,choice=null,owners=new Set(),excluded=new Set(),ovIdx=0;
 try{who=localStorage.getItem('pr_who')}catch(e){}
 try{gi=+(localStorage.getItem('pr_gi')||0)}catch(e){}
 function fmtDate(s){const d=new Date(s.replace(' ','T'));return d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getFullYear()}
 function yearsLabel(ys){if(!ys.length)return'';return ys.length>2?ys[0]+'–'+ys[ys.length-1]:ys.join(' or ')}
 function answersFor(id){return S.answers.filter(a=>a.group===id)}
 function latestByPerson(id){const m={};for(const a of answersFor(id))m[a.who]=a;return Object.values(m)}
+function nVid(g){return g.assets.filter(a=>a.type==='VIDEO').length}
+function itemsLabel(g,n){const v=nVid(g),p=g.assets.length-v;n=n??g.assets.length;return v&&p?n+' photos & videos':n+(v?' videos':' photos')}
+function ansText(a){if(a.unsure)return'not sure';if(a.kind==='owner')return(a.owners||[]).join(', ');return a.year+(a.month?', '+MONTHS[a.month-1]:'')}
 async function load(){
   const r=await fetch('api/state',{cache:'no-store'});S=await r.json();
   if(gi>=S.groups.length)gi=0;renderWho();render();
@@ -105,60 +112,115 @@ function renderWho(){
   for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};renderWho();setMsg('')};w.append(b)}
 }
 function setMsg(t,cls=''){const m=$('msg');if(m){m.textContent=t;m.className='msg '+cls}}
+function previous(g){
+  const prev=el('div',{className:'prev'}),prevA=latestByPerson(g.id);
+  if(prevA.length){prev.append(el('b',{textContent:'Answers so far'}));for(const a of prevA)prev.append(el('div',{textContent:`${a.who}: ${ansText(a)}${a.excluded&&a.excluded.length?` (${a.excluded.length} marked odd one out)`:''}${a.note?' — “'+a.note+'”':''}`}))}
+  return prev;
+}
+function gridFor(g){
+  const grid=el('div',{className:'grid'});
+  g.assets.forEach((a,i)=>{const kids=[el('img',{src:'img/t/'+a.id,alt:a.name,loading:'lazy'})];if(a.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
+    const b=el('button',{className:'ph',title:a.name},kids);b.onclick=()=>openOv(i);b.oncontextmenu=e=>{e.preventDefault();toggleOut(a.id)};b.dataset.id=a.id;grid.append(b)});
+  return grid;
+}
 function render(){
   const total=S.groups.length,done=S.groups.filter(g=>latestByPerson(g.id).length).length;
-  $('prog').textContent=`Step 1 · Year (month optional) · ${done} of ${total} groups answered`;
+  $('prog').textContent=`${S.round_title||'Review'} · ${done} of ${total} answered`;
   $('bar').style.width=(total?100*done/total:0)+'%';
-  const j=$('jump');j.replaceChildren(...S.groups.map((g,i)=>el('option',{value:i,textContent:`${latestByPerson(g.id).length?'✓ ':''}${g.title} · ${g.assets.length} photos`})));j.value=gi;
+  const j=$('jump');j.replaceChildren(...S.groups.map((g,i)=>el('option',{value:i,textContent:`${latestByPerson(g.id).length?'✓ ':''}${g.kind==='owner'?'Whose? ':'When? '}${g.title} · ${itemsLabel(g)}`})));j.value=gi;
   try{localStorage.setItem('pr_gi',gi)}catch(e){}
-  const g=S.groups[gi],card=$('card');choice=null;excluded=new Set();
+  const g=S.groups[gi],card=$('card');choice=null;owners=new Set();excluded=new Set();
   if(!g){card.replaceChildren(el('p',{textContent:'Nothing to review right now.'}));return}
-  const camYears=g.camera_years.map(Number),folderYears=g.folder_years;
-  const camRange=g.first.slice(0,10)===g.last.slice(0,10)?fmtDate(g.first):fmtDate(g.first)+' – '+fmtDate(g.last);
-  const grid=el('div',{className:'grid'});
-  g.assets.forEach((a,i)=>{const b=el('button',{className:'ph',title:a.name},[el('img',{src:'img/t/'+a.id,alt:a.name,loading:'lazy'})]);b.onclick=()=>openOv(i);b.oncontextmenu=e=>{e.preventDefault();toggleOut(a.id)};b.dataset.id=a.id;grid.append(b)});
-  const opts=el('div',{className:'opts'});
-  const seen=new Set(),add=(y,why)=>{if(seen.has(y))return;seen.add(y);const b=el('button',{className:'opt'},[String(y),el('small',{textContent:why})]);b.onclick=()=>pick(b,{year:y});opts.append(b)};
-  if(folderYears.length&&folderYears.length<=6)folderYears.forEach(y=>add(y,'From the folder name'));
-  camYears.forEach(y=>add(y,'What the camera says'));
-  const other=el('input',{placeholder:'e.g. 2005',inputMode:'numeric',maxLength:4});
-  const ob=el('button',{className:'opt'},['Another year: ',other,el('small',{textContent:'Type it in'})]);
-  ob.onclick=e=>{pick(ob,{year:'other'});if(e.target!==other)other.focus()};other.oninput=()=>pick(ob,{year:'other'});opts.append(ob);
-  const ub=el('button',{className:'opt'},['Not sure',el('small',{textContent:'Skip — let someone else answer'})]);ub.onclick=()=>pick(ub,{unsure:true});opts.append(ub);
-  const ms=el('select',{id:'month'});ms.append(el('option',{value:'',textContent:"Don't know"}));MONTHS.forEach((m,i)=>ms.append(el('option',{value:i+1,textContent:m})));
-  const note=el('textarea',{id:'note',placeholder:"Anything you remember? (optional, e.g. 'New Year's Eve at the house')",maxLength:1000});
-  const prev=el('div',{className:'prev'});
-  const prevA=latestByPerson(g.id);
-  if(prevA.length){prev.append(el('b',{textContent:'Answers so far'}));for(const a of prevA)prev.append(el('div',{textContent:`${a.who}: ${a.unsure?'not sure':a.year+(a.month?', '+MONTHS[a.month-1]:'')}${a.excluded&&a.excluded.length?` (${a.excluded.length} marked different event)`:''}${a.note?' — “'+a.note+'”':''}`}))}
-  const save=el('button',{className:'btn pri',textContent:'Save & next group →'});
-  save.onclick=async()=>{
-    if(!who)return setMsg('First pick who is answering (top of the page).','err');
-    if(!choice)return setMsg('Pick a year, or "Not sure".','err');
-    let year=choice.year;if(year==='other'){year=parseInt(other.value,10);if(!(year>=1950&&year<=new Date().getFullYear()))return setMsg('Type a year between 1950 and now.','err')}
-    const body={group:g.id,who,unsure:!!choice.unsure,year:choice.unsure?null:year,month:ms.value?+ms.value:null,note:note.value.trim(),excluded:[...excluded]};
+  const note=el('textarea',{id:'note',placeholder:"Anything you remember? (optional)",maxLength:1000});
+  const save=el('button',{className:'btn pri',textContent:'Save & next →'});
+  const foot=el('div',{className:'foot'},[el('span',{className:'hint',style:'margin:0',textContent:`${gi+1} of ${S.groups.length}`}),save]);
+  const post=async body=>{
     save.disabled=true;
     try{const r=await fetch('api/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
       if(!r.ok)throw new Error(d.error||'save failed');S.answers.push(d.saved);gi=Math.min(gi+1,S.groups.length-1);render();setMsg('Saved. Thank you!','ok');window.scrollTo(0,0)}
     catch(e){setMsg('Could not save: '+e.message,'err');save.disabled=false}
   };
+  if(g.kind==='owner')return renderOwner(g,card,note,save,foot,post);
+  renderDate(g,card,note,save,foot,post);
+}
+function renderOwner(g,card,note,save,foot,post){
+  const opts=el('div',{className:'opts'});
+  for(const o of S.owners){const b=el('button',{className:'opt'},[o,el('small',{textContent:OWNER_HELP[o]||'Their camera or phone'})]);
+    b.onclick=()=>{owners.has(o)?owners.delete(o):owners.add(o);b.classList.toggle('on',owners.has(o));ub.classList.remove('on');choice=owners.size?'owners':null;setMsg('')};opts.append(b)}
+  const ub=el('button',{className:'opt'},['Not sure',el('small',{textContent:'Skip — let someone else answer'})]);
+  ub.onclick=()=>{owners.clear();opts.querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));ub.classList.add('on');choice='unsure';setMsg('')};opts.append(ub);
+  save.onclick=()=>{
+    if(!who)return setMsg('First pick who is answering (top of the page).','err');
+    if(!choice)return setMsg('Pick one or more people, or "Not sure".','err');
+    post({group:g.id,who,unsure:choice==='unsure',owners:choice==='unsure'?[]:[...owners],note:note.value.trim(),excluded:[...excluded]});
+  };
+  const isCam=g.camera!=='CD/DVD videos',v=g.videos||0,p=g.count-v;
+  const facts=[el('span',{className:'chip',textContent:isCam?(v?`${g.count.toLocaleString()} items in the library (${p.toLocaleString()} photos, ${v} videos)`:`${g.count.toLocaleString()} photos in the library`):itemsLabel(g)}),
+    el('span',{className:'chip',textContent:`Years: ${g.years[0]===g.years[1]?g.years[0]:g.years[0]+'–'+g.years[1]}`})];
+  for(const f of g.folders||[])facts.push(el('span',{className:'chip',textContent:'Folder: '+f}));
+  card.replaceChildren(
+    el('h1',{textContent:isCam?'Camera: '+g.title:g.title}),
+    el('div',{className:'facts'},facts),
+    el('div',{className:'conflict',textContent:isCam?`These are ${g.assets.length} examples taken with this camera. Whose camera or phone was it?`:`Old family videos from CDs/DVDs. Whose are they?${g.suggest?' Hussam thinks: '+g.suggest+'.':''}`}),
+    el('a',{className:'jumpq',href:'#q',textContent:'Skip to the question ↓'}),
+    gridFor(g),
+    el('div',{className:'hint',textContent:'Tap to see it bigger (videos play). If one doesn\'t belong, open it and press "Mark: odd one out".'}),
+    el('div',{className:'q',id:'q'},[el('h2',{textContent:isCam?'Whose camera was this? (pick all that apply)':'Whose videos are these? (pick all that apply)'}),opts,note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
+  );
+}
+function renderDate(g,card,note,save,foot,post){
+  const opts=el('div',{className:'opts'}),seen=new Set();
+  const add=(y,why)=>{if(seen.has(y))return;seen.add(y);const b=el('button',{className:'opt'},[String(y),el('small',{textContent:why})]);b.onclick=()=>pick(b,{year:y});opts.append(b);return b};
+  let pre=null,monthHint='',say;
+  if(g.say){ // video rounds
+    if(g.known_year)pre=add(g.known_year,'Already set — keep it');
+    (g.current_years||[]).forEach(y=>add(y,'What it shows now'));
+    say=g.say;
+  }else{ // photo rounds (1–2)
+    const folderYears=g.folder_years||[],camYears=(g.camera_years||[]).map(Number);
+    if(folderYears.length&&folderYears.length<=6)folderYears.forEach(y=>add(y,'From the folder name'));
+    camYears.forEach(y=>add(y,'What the camera says'));
+    const camRange=g.first.slice(0,10)===g.last.slice(0,10)?fmtDate(g.first):fmtDate(g.first)+' – '+fmtDate(g.last);
+    say=`The camera says ${camRange}. The folder name says ${yearsLabel(folderYears)||'no year'}.`;
+    if(g.camera_month)monthHint='The camera says '+MONTHS[g.camera_month-1];
+  }
+  const other=el('input',{placeholder:'e.g. 2005',inputMode:'numeric',maxLength:4});
+  const ob=el('button',{className:'opt'},['Another year: ',other,el('small',{textContent:'Type it in'})]);
+  ob.onclick=e=>{pick(ob,{year:'other'});if(e.target!==other)other.focus()};other.oninput=()=>pick(ob,{year:'other'});opts.append(ob);
+  const ub=el('button',{className:'opt'},['Not sure',el('small',{textContent:'Skip — let someone else answer'})]);ub.onclick=()=>pick(ub,{unsure:true});opts.append(ub);
+  if(pre)pick(pre,{year:g.known_year});
+  const ms=el('select',{id:'month'});ms.append(el('option',{value:'',textContent:"Don't know"}));MONTHS.forEach((m,i)=>ms.append(el('option',{value:i+1,textContent:m})));
+  save.onclick=()=>{
+    if(!who)return setMsg('First pick who is answering (top of the page).','err');
+    if(!choice)return setMsg('Pick a year, or "Not sure".','err');
+    let year=choice.year;if(year==='other'){year=parseInt(other.value,10);if(!(year>=1950&&year<=new Date().getFullYear()))return setMsg('Type a year between 1950 and now.','err')}
+    post({group:g.id,who,unsure:!!choice.unsure,year:choice.unsure?null:year,month:ms.value?+ms.value:null,note:note.value.trim(),excluded:[...excluded]});
+  };
+  const facts=[el('span',{className:'chip',textContent:itemsLabel(g)})];
+  if(g.camera)facts.push(el('span',{className:'chip',textContent:'Camera: '+g.camera}));
+  if(g.folder)facts.push(el('span',{className:'chip',textContent:'Folder: '+g.folder}));
+  const tierMonth=g.tier==='month';
   card.replaceChildren(
     el('h1',{textContent:g.title}),
-    el('div',{className:'facts'},[el('span',{className:'chip',textContent:g.assets.length+' photos'}),el('span',{className:'chip',textContent:'Camera: '+g.camera}),el('span',{className:'chip',textContent:'Folder: '+g.folder})]),
-    el('div',{className:'conflict',textContent:`The camera says ${camRange}. The folder name says ${yearsLabel(folderYears)||'no year'}.`}),
+    el('div',{className:'facts'},facts),
+    el('div',{className:'conflict',textContent:say}),
     el('a',{className:'jumpq',href:'#q',textContent:'Skip to the question ↓'}),
-    grid,
-    el('div',{className:'hint',textContent:'Tap a photo to see it bigger. If a photo is from a different event, open it and press "Mark: different event".'}),
-    el('div',{className:'q',id:'q'},[el('h2',{textContent:'What year were these taken?'}),opts,
-      el('div',{className:'row'},[el('label',{htmlFor:'month',textContent:'Month (optional):'}),ms,el('span',{className:'hint',style:'margin:0',textContent:'The camera says '+MONTHS[g.camera_month-1]})]),
-      note,prev,el('div',{className:'msg',id:'msg'}),
-      el('div',{className:'foot'},[el('span',{className:'hint',style:'margin:0',textContent:`Group ${gi+1} of ${S.groups.length}`}),save])])
+    gridFor(g),
+    el('div',{className:'hint',textContent:'Tap to see it bigger (videos play). If one is from a different event, open it and press "Mark: odd one out".'}),
+    el('div',{className:'q',id:'q'},[el('h2',{textContent:tierMonth?'Which month? (and is the year right?)':'What year were these taken?'}),opts,
+      el('div',{className:'row'},[el('label',{htmlFor:'month',textContent:tierMonth?'Month:':'Month (optional):'}),ms,monthHint?el('span',{className:'hint',style:'margin:0',textContent:monthHint}):'']),
+      note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
   );
 }
 function pick(btn,c){document.querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));btn.classList.add('on');choice=c;setMsg('')}
 function toggleOut(id){excluded.has(id)?excluded.delete(id):excluded.add(id);document.querySelectorAll('.ph').forEach(p=>p.classList.toggle('out',excluded.has(p.dataset.id)));updOv()}
 function openOv(i){ovIdx=i;$('ov').classList.add('on');updOv()}
-function updOv(){const g=S.groups[gi];if(!g||!$('ov').classList.contains('on'))return;const a=g.assets[ovIdx];$('ovImg').src='img/p/'+a.id;$('ovCap').textContent=`${a.name} · camera date ${fmtDate(a.date)} · ${ovIdx+1}/${g.assets.length}`;$('ovOut').textContent=excluded.has(a.id)?'Undo: different event':'Mark: different event'}
-$('ovClose').onclick=()=>$('ov').classList.remove('on');
+function stopVid(){const v=$('ovVid');v.pause();v.removeAttribute('src');v.load()}
+function updOv(){const g=S.groups[gi];if(!g||!$('ov').classList.contains('on'))return;const a=g.assets[ovIdx],v=$('ovVid'),im=$('ovImg');
+  if(a.type==='VIDEO'){im.style.display='none';v.style.display='';const src='vid/'+a.id;if(!v.src.endsWith(src)){v.poster='img/p/'+a.id;v.src=src}}
+  else{stopVid();v.style.display='none';im.style.display='';im.src='img/p/'+a.id}
+  $('ovCap').textContent=`${a.name} · shows as ${fmtDate(a.date)} · ${ovIdx+1}/${g.assets.length}`;$('ovOut').textContent=excluded.has(a.id)?'Undo: odd one out':'Mark: odd one out'}
+$('ovClose').onclick=()=>{stopVid();$('ov').classList.remove('on')};
 $('ovPrev').onclick=()=>{const n=S.groups[gi].assets.length;ovIdx=(ovIdx-1+n)%n;updOv()};
 $('ovNext').onclick=()=>{const n=S.groups[gi].assets.length;ovIdx=(ovIdx+1)%n;updOv()};
 $('ovOut').onclick=()=>toggleOut(S.groups[gi].assets[ovIdx].id);

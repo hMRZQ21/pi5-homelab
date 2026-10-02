@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
-"""Photo date review: shows groups of photos with a disputed date and records family answers.
+"""Family review page: shows groups of photos/videos and records family answers.
 
-Read-only toward Immich: thumbnails come from Immich's thumbs folder (mounted read-only),
-answers are appended to /data/answers.jsonl. Applying answers to Immich is a separate step.
+Question kinds: 'date' (what year/month?) and 'owner' (whose camera / whose videos?).
+Read-only toward Immich: thumbnails, transcoded videos and originals come from Immich's
+folders (all mounted read-only); answers are appended to /data/answers.jsonl.
+Applying answers to Immich is a separate, logged step.
 """
 import datetime, fcntl, json, os, re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-DATA, THUMBS = '/data', '/thumbs'
+DATA, THUMBS, ENC, ORIG = '/data', '/thumbs', '/enc', '/orig'
 PEOPLE = ['Reem', 'Mohammed', 'Hussam', 'Wissam', 'Ghazi']
+OWNERS = PEOPLE + ['Family', 'Someone else']
+VTYPES = {'mp4': 'video/mp4', 'mov': 'video/mp4', 'm4v': 'video/mp4', '3gp': 'video/3gpp', 'mkv': 'video/x-matroska'}
+CHUNK = 256 * 1024
 HERE = os.path.dirname(os.path.abspath(__file__))
-_cache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
+_cache = {'mtime': None, 'doc': {}, 'groups': [], 'index': {}, 'files': {}}
 
 
 def groups():
     p = os.path.join(DATA, 'groups.json')
     m = os.path.getmtime(p)
     if m != _cache['mtime']:
-        g = json.load(open(p, encoding='utf-8'))['groups']
+        doc = json.load(open(p, encoding='utf-8'))
+        g = doc['groups']
         files = {}
         for grp in g:
             for a in grp['assets']:
-                files[a['id']] = (a['t'], a['p'])
-        _cache.update(mtime=m, groups=g, index={x['id']: x for x in g}, files=files)
+                files[a['id']] = (a['t'], a['p'], a.get('v'))
+        _cache.update(mtime=m, doc=doc, groups=g, index={x['id']: x for x in g}, files=files)
     return _cache
 
 
@@ -40,11 +46,16 @@ def answers():
     return out
 
 
+def inside(root, rel):
+    full = os.path.realpath(os.path.join(root, rel))
+    return full if full.startswith(root + '/') and os.path.isfile(full) else None
+
+
 class H(BaseHTTPRequestHandler):
     server_version = 'photo-review'
 
     def log_message(self, fmt, *args):
-        if not self.path.startswith('/img/'):
+        if not (self.path.startswith('/img/') or self.path.startswith('/vid/')):
             super().log_message(fmt, *args)
 
     def send(self, code, body, ctype='application/json; charset=utf-8', extra=None):
@@ -59,7 +70,52 @@ class H(BaseHTTPRequestHandler):
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != 'HEAD':
+            self.wfile.write(body)
+
+    def video(self, full):
+        size = os.path.getsize(full)
+        ctype = VTYPES.get(full.rsplit('.', 1)[-1].lower(), 'application/octet-stream')
+        start, end, code = 0, size - 1, 200
+        rng = self.headers.get('Range')
+        if rng:
+            m = re.fullmatch(r'bytes=(\d*)-(\d*)', rng.strip())
+            if not m or (m.group(1) == '' and m.group(2) == ''):
+                return self.send(416, {'error': 'bad range'}, extra={'Content-Range': f'bytes */{size}'})
+            if m.group(1) == '':
+                start = max(0, size - int(m.group(2)))
+            else:
+                start = int(m.group(1))
+                if m.group(2):
+                    end = min(int(m.group(2)), size - 1)
+            if start >= size or start > end:
+                return self.send(416, {'error': 'bad range'}, extra={'Content-Range': f'bytes */{size}'})
+            code = 206
+        self.send_response(code)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Content-Length', str(end - start + 1))
+        self.send_header('Cache-Control', 'private, max-age=86400')
+        if code == 206:
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+        self.end_headers()
+        if self.command == 'HEAD':
+            return
+        try:
+            with open(full, 'rb') as f:
+                f.seek(start)
+                left = end - start + 1
+                while left > 0:
+                    buf = f.read(min(CHUNK, left))
+                    if not buf:
+                        break
+                    self.wfile.write(buf)
+                    left -= len(buf)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the browser stopped reading (seek / closed the player)
+
+    def do_HEAD(self):
+        return self.do_GET()
 
     def do_GET(self):
         path = self.path.split('?', 1)[0]
@@ -70,19 +126,28 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {'ok': True})
         if path == '/api/state':
             c = groups()
-            return self.send(200, {'people': PEOPLE, 'groups': c['groups'], 'answers': answers()},
-                             extra={'Cache-Control': 'no-store'})
+            return self.send(200, {'people': PEOPLE, 'owners': OWNERS, 'round_title': c['doc'].get('round_title', ''),
+                                   'groups': c['groups'], 'answers': answers()}, extra={'Cache-Control': 'no-store'})
         m = re.fullmatch(r'/img/([tp])/([0-9a-f-]{36})', path)
         if m:
             f = groups()['files'].get(m.group(2))
             if not f:
                 return self.send(404, {'error': 'unknown photo'})
-            rel = f[0] if m.group(1) == 't' else f[1]
-            full = os.path.realpath(os.path.join(THUMBS, rel))
-            if not full.startswith(THUMBS + '/') or not os.path.isfile(full):
+            full = inside(THUMBS, f[0] if m.group(1) == 't' else f[1])
+            if not full:
                 return self.send(404, {'error': 'missing thumbnail'})
             ctype = 'image/webp' if full.endswith('.webp') else 'image/jpeg'
             return self.send(200, open(full, 'rb').read(), ctype, {'Cache-Control': 'private, max-age=86400'})
+        m = re.fullmatch(r'/vid/([0-9a-f-]{36})', path)
+        if m:
+            f = groups()['files'].get(m.group(1))
+            if not f or not f[2]:
+                return self.send(404, {'error': 'unknown video'})
+            kind, rel = f[2]
+            full = inside(ENC if kind == 'enc' else ORIG, rel)
+            if not full:
+                return self.send(404, {'error': 'missing video'})
+            return self.video(full)
         return self.send(404, {'error': 'not found'})
 
     def do_POST(self):
@@ -101,17 +166,26 @@ class H(BaseHTTPRequestHandler):
         if d.get('who') not in PEOPLE:
             return self.send(400, {'error': 'pick who is answering'})
         unsure = bool(d.get('unsure'))
-        year, month = d.get('year'), d.get('month')
-        if not unsure and not (isinstance(year, int) and 1950 <= year <= datetime.date.today().year):
-            return self.send(400, {'error': 'year must be between 1950 and this year'})
-        if month is not None and not (isinstance(month, int) and 1 <= month <= 12):
-            return self.send(400, {'error': 'bad month'})
         ids = {a['id'] for a in g['assets']}
         excluded = [x for x in (d.get('excluded') or []) if x in ids]
         note = str(d.get('note') or '')[:1000]
         rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'), 'who': d['who'], 'group': g['id'],
-               'tier': g.get('tier', 'year'), 'year': None if unsure else year, 'month': None if unsure else month,
-               'unsure': unsure, 'excluded': excluded, 'note': note, 'client': self.client_address[0]}
+               'kind': g.get('kind', 'date'), 'unsure': unsure, 'excluded': excluded, 'note': note,
+               'client': self.client_address[0]}
+        if rec['kind'] == 'owner':
+            owners = d.get('owners') or []
+            if not isinstance(owners, list) or any(o not in OWNERS for o in owners) or len(set(owners)) != len(owners):
+                return self.send(400, {'error': 'bad owners'})
+            if not unsure and not owners:
+                return self.send(400, {'error': 'pick at least one person, or "Not sure"'})
+            rec['owners'] = [] if unsure else owners
+        else:
+            year, month = d.get('year'), d.get('month')
+            if not unsure and not (isinstance(year, int) and 1950 <= year <= datetime.date.today().year):
+                return self.send(400, {'error': 'year must be between 1950 and this year'})
+            if month is not None and not (isinstance(month, int) and 1 <= month <= 12):
+                return self.send(400, {'error': 'bad month'})
+            rec.update(tier=g.get('tier', 'year'), year=None if unsure else year, month=None if unsure else month)
         with open(os.path.join(DATA, 'answers.jsonl'), 'a', encoding='utf-8') as f:
             fcntl.flock(f, fcntl.LOCK_EX)
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')
