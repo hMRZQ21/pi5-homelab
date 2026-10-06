@@ -16,28 +16,32 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-app
 .pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;cursor:pointer}
 .pill.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px}
-select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
-.btn{border:0;border-radius:10px;padding:9px 16px;cursor:pointer}.btn.pri{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn{font:inherit;border:0;border-radius:10px;padding:9px 16px;cursor:pointer}.btn.pri{background:var(--acc);color:var(--acc-ink);font-weight:600}
 .btn.sec{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.intro{margin:0 0 12px;font-size:14px}
 .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .rh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:8px}
 .chip{background:var(--chip);border-radius:7px;padding:2px 8px;font-size:12px}.chip.w{background:var(--warn);color:#fff}
 .done{color:var(--keep);font-size:12px;font-weight:600}
 .mem{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.mem.big{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+#pager{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.pgn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .m{border:3px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--card);color:var(--ink);padding:0;text-align:left;font:inherit;position:relative}
-.m.keep{border-color:var(--keep)}.m.trash{border-color:var(--trash)}.m.trash img{opacity:.55}
+.m.keep{border-color:var(--keep)}.m.trash{border-color:var(--trash)}.m.trash img{opacity:.45}
 .m img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--tile)}
 .badge{position:absolute;top:6px;left:6px;font-size:11px;font-weight:700;color:#fff;border-radius:5px;padding:2px 7px}
 .keep .badge{background:var(--keep)}.trash .badge{background:var(--trash)}
 .play{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;font-size:11px;padding:2px 7px}
+.odrop{position:absolute;left:6px;top:30px;font-size:11px;background:rgba(0,0,0,.7);color:#fff;border-radius:5px;padding:2px 6px}
 .meta{padding:6px 8px;font-size:12px;line-height:1.35;overflow-wrap:anywhere}.meta b{font-weight:600}
 .ok{color:var(--keep)}.bad{color:var(--warn)}
 .carry{font-size:12px;color:var(--warn);margin-top:6px}
+.others{font-size:12px;color:var(--muted);margin-top:6px}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+textarea{width:100%;min-height:40px;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:7px;background:var(--bg);color:var(--ink);font:inherit}
 .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin:12px 0 30px}
 .msg{font-size:13px;min-height:18px}.msg.err{color:var(--warn)}.msg.ok{color:var(--keep)}
 .tabs{display:flex;gap:6px;margin-top:6px}.tabs a{font-size:13px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none}.tabs a.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
-.others{font-size:12px;color:var(--muted);margin-top:6px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;flex-direction:column;padding:12px;z-index:9;overflow:auto}
 .ov.on{display:flex}.cmp{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start}
 .cmp figure{margin:0;flex:1 1 300px;max-width:49%;min-width:260px;color:#ddd;font-size:12px}
@@ -55,79 +59,117 @@ select,.btn{font:inherit}select{padding:6px;border:1px solid var(--line);border-
   </div>
   <div class="bar"><i id="bar"></i></div>
   <div class="ctl">
-    <select id="flt"><option value="all">All groups</option><option value="copy">Copies</option><option value="review">Disputed dates</option><option value="burst">Bursts (similar shots)</option></select>
-    <label class="muted"><input type="checkbox" id="und"> Undecided only</label>
+    <button class="pill" data-mode="burst">Bursts</button>
+    <button class="pill" data-mode="review">Dates disagree</button>
+    <button class="pill" data-mode="spot">Spot-check copies</button>
     <span style="flex:1"></span>
-    <button class="btn sec" id="pp">←</button><span class="muted" id="pg"></span><button class="btn sec" id="np">→</button>
+    <span id="pager"><label class="muted"><input type="checkbox" id="und"> Undecided only</label>
+      <span class="pgn"><button class="btn sec" id="pp">←</button><span class="muted" id="pg"></span><button class="btn sec" id="np">→</button></span></span>
   </div>
-  <p class="muted">Each box is the same photo saved more than once. <b>Green = keep, red = remove the extra copy.</b> Tap a photo to switch it. "Compare large" shows them side by side. If they are actually <i>different</i> photos, press "Not duplicates — keep all". Nothing is deleted here — Hussam applies the answers later, and anything removed can be restored for 30 days.</p>
+  <p class="intro" id="intro"></p>
   <div id="list"></div>
-  <div class="foot"><div class="msg" id="msg"></div><button class="btn pri" id="save">Approve this page</button></div>
+  <div class="foot" id="foot"><div class="msg" id="msg"></div><button class="btn pri" id="save">Save this page</button></div>
+  <div class="foot" id="spotbar"><span class="muted">Read-only. Nothing to save here.</span><button class="btn sec" id="respot">Show 20 others</button></div>
 </div>
 <div class="ov" id="ov"><div class="cmp" id="cmp"></div><div class="ovbar"><button class="btn pri" id="ovc">Close</button></div></div>
 <script>
-const PER=20,$=id=>document.getElementById(id);
+const PER=10,$=id=>document.getElementById(id);
 const el=(t,p={},k=[])=>{const e=document.createElement(t);Object.assign(e,p);for(const c of k)e.append(c);return e};
-let S={people:[],groups:[],answers:[]},who=null,page=0,cur={},view=[];
+let S={people:[],groups:[],answers:[],copies:0},who=null,page=0,cur={},notes={},view=[],mode='burst',spot=[];
 try{who=localStorage.getItem('pr_who')}catch(e){}
-const CLS={copy:'same photo',review:'same photo, dates disagree',burst:'similar shots — keep all unless you want to pick'};
-function latest(gid){let r=null;for(const a of S.answers)if(a.group===gid&&a.who===who)r=a;return r}
-function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep:g.default_keep)}return cur[g.id]}
+try{const m=localStorage.getItem('pr_dmode');if(['burst','review','spot'].includes(m))mode=m}catch(e){}
+const INTRO={
+  burst:'Each box is a burst: similar shots taken seconds apart. They are all kept unless you tap one to drop it. A photo is only removed if nobody keeps it, and anything removed can be restored for 30 days.',
+  review:'The same photo saved twice, but the copies show different dates. Keep the copy whose date is right (green = keep, red = remove).',
+  spot:''};
 const mb=b=>b>=1e6?(b/1e6).toFixed(1)+' MB':Math.round(b/1e3)+' KB';
-function fmt(d){return d.replace(' ',' · ')}
+const ext=n=>n.split('.').pop().toUpperCase();
 function trustTxt(t){return t?el('span',{className:'ok',textContent:'✓ camera date'}):el('span',{className:'bad',textContent:'⚠ date may be wrong'})}
+function latest(gid,w=who){let r=null;for(const a of S.answers)if(a.group===gid&&a.who===w)r=a;return r}
+function others(gid){const o={};for(const a of S.answers)if(a.group===gid&&a.who!==who)o[a.who]=a;return Object.values(o)}
+function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep:g.default_keep);notes[g.id]=l&&l.note||''}return cur[g.id]}
 function carry(g,keep){ // date the single keeper will get, if it lacks a trusted date
   if(keep.size!==1)return'';const k=g.members.find(m=>keep.has(m.id));if(k.trust)return'';
   const t=g.members.find(m=>m.trust&&m.id!==k.id);return t&&t.date.slice(0,16)!==k.date.slice(0,16)?t.date:''}
-async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};renderWho();render()}
-function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};renderWho();render()};w.append(b)}}
-function filtered(){const f=$('flt').value,u=$('und').checked;return S.groups.filter(g=>(f==='all'||g.cls===f)&&(!u||!latest(g.id)))}
+async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};notes={};renderWho();render()}
+function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};notes={};renderWho();render()};w.append(b)}}
 function render(){
-  const done=S.groups.filter(g=>latest(g.id)).length;$('prog').textContent=who?`Duplicates · ${done} of ${S.groups.length} decided by ${who}`:'Duplicates · pick who is deciding (top of the page)';$('bar').style.width=100*done/S.groups.length+'%';
-  view=filtered();const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;$('pg').textContent=`Page ${page+1} of ${pages} · ${view.length} groups`;
-  const list=$('list');list.replaceChildren();
-  for(const g of view.slice(page*PER,page*PER+PER))list.append(rowFor(g));
-  $('save').textContent=`Approve this page (${Math.min(PER,view.length-page*PER)})`;window.scrollTo(0,0)}
+  for(const b of document.querySelectorAll('[data-mode]')){const n=b.dataset.mode==='spot'?S.copies:S.groups.filter(g=>g.cls===b.dataset.mode).length;
+    b.textContent={burst:'Bursts',review:'Dates disagree',spot:'Spot-check copies'}[b.dataset.mode]+` (${n})`;b.classList.toggle('on',b.dataset.mode===mode)}
+  const done=S.groups.filter(g=>latest(g.id)).length;
+  $('prog').textContent=who?`Duplicates · ${done} of ${S.groups.length} decided by ${who}`:'Duplicates · pick who is deciding (top of the page)';
+  $('bar').style.width=(S.groups.length?100*done/S.groups.length:0)+'%';
+  const isSpot=mode==='spot',list=$('list');
+  $('pager').style.display=$('foot').style.display=isSpot?'none':'';$('spotbar').style.display=isSpot?'':'none';
+  $('intro').textContent=isSpot?`Exact copies (${S.copies} groups) are decided automatically: keep the best file (live photo, then more pixels, then HEIC/MOV over JPG, then the larger file), and carry over a camera date and GPS from the other copies. Here are 20 random ones to eyeball.`:INTRO[mode];
+  list.replaceChildren();
+  if(isSpot){if(spot.length)spot.forEach(g=>list.append(spotRow(g)));else loadSpot();return}
+  view=S.groups.filter(g=>g.cls===mode&&(!$('und').checked||!latest(g.id)));
+  const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
+  $('pg').textContent=`Page ${page+1} of ${pages} · ${view.length} groups`;
+  const shown=view.slice(page*PER,page*PER+PER);shown.forEach(g=>list.append(rowFor(g)));
+  if(!shown.length)list.append(el('p',{className:'muted',textContent:'Nothing left here.'}));
+  $('save').textContent=`Save this page (${shown.length})`;$('save').disabled=!shown.length}
+function tile(m,k,label,extra=[]){
+  const kids=[el('img',{src:'img/t/'+m.id,loading:'lazy',alt:m.name}),el('span',{className:'badge',textContent:label})];
+  if(m.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
+  return el('button',{className:'m '+(k?'keep':'trash')},[...kids,...extra])}
+function fullMeta(m){const meta=el('div',{className:'meta'},[el('b',{textContent:m.name}),el('br'),`${m.wh} · ${mb(m.bytes)} · ${ext(m.name)}`,el('br'),m.date+' ',trustTxt(m.trust),el('br'),m.cam||'no camera tag',m.gps?' · GPS':'']);
+  for(const f of (m.hdd||'').split('|').filter(Boolean))meta.append(el('br'),el('span',{className:'muted',textContent:'Folder: '+f.split('/').slice(0,-1).join('/')}));
+  if(!m.hdd)meta.append(el('br'),el('span',{className:'muted',textContent:'No HDD folder'}));
+  return meta}
 function rowFor(g){
-  const keep=state(g),box=el('div',{className:'row'});
+  const keep=state(g),box=el('div',{className:'row'}),burst=g.cls==='burst',oth=others(g.id);
+  const note=el('textarea',{placeholder:'Anything to add? (optional)',maxLength:500,value:notes[g.id]});note.oninput=()=>{notes[g.id]=note.value};
   const draw=()=>{
-    const head=el('div',{className:'rh'},[el('b',{textContent:`${g.members.length} items`}),el('span',{className:'chip'+(g.cls==='copy'?'':' w'),textContent:CLS[g.cls]})]);
+    const head=el('div',{className:'rh'},[el('b',{textContent:`${g.members.length} ${burst?'shots':'copies'}`}),
+      el('span',{className:'chip w',textContent:burst?'similar shots':'dates disagree'}),el('span',{className:'muted',textContent:`keeping ${keep.size} of ${g.members.length}`})]);
     if(latest(g.id))head.append(el('span',{className:'done',textContent:'✓ decided'}));
-    const grid=el('div',{className:'mem'});
+    const grid=el('div',{className:'mem'+(burst?' big':'')});
     for(const m of g.members){
-      const k=keep.has(m.id),kids=[el('img',{src:'img/t/'+m.id,loading:'lazy',alt:m.name}),el('span',{className:'badge',textContent:k?'KEEP':'TRASH'})];
-      if(m.type==='VIDEO')kids.push(el('span',{className:'play',textContent:'▶ video'}));
-      const meta=el('div',{className:'meta'},[el('b',{textContent:m.name}),el('br'),`${m.wh} · ${mb(m.bytes)} · ${m.name.split('.').pop().toUpperCase()}`,el('br'),fmt(m.date),' ',trustTxt(m.trust),el('br'),m.cam||'no camera tag',m.gps?' · GPS':'']);
-      if(m.hdd)meta.append(el('br'),el('span',{className:'muted',textContent:'Folder: '+m.hdd.split('|')[0]}));
-      const t=el('button',{className:'m '+(k?'keep':'trash'),title:'Tap to switch keep / trash'},[...kids,meta]);
-      t.onclick=()=>{k?keep.delete(m.id):keep.add(m.id);draw()};grid.append(t)}
-    const c=carry(g,keep),parts=[head,grid];
-    const oth={};for(const a of S.answers)if(a.group===g.id&&a.who!==who)oth[a.who]=a;
-    const ol=Object.values(oth).map(a=>`${a.who}: ${a.trash.length?`keeps ${a.keep.length} · removes ${a.trash.length}`:'keep all'}`);
-    if(ol.length)parts.push(el('div',{className:'others',textContent:'Others: '+ol.join(' · ')}));
+      const k=keep.has(m.id),drops=oth.filter(a=>a.trash.includes(m.id)).map(a=>a.who);
+      const extra=[burst?el('div',{className:'meta'},[el('b',{textContent:m.date.slice(11)}),` · ${m.wh}`,el('br'),el('span',{className:'muted',textContent:m.name})]):fullMeta(m)];
+      if(drops.length)extra.unshift(el('span',{className:'odrop',textContent:drops.join(', ')+' would drop'}));
+      const t=tile(m,k,k?'KEEP':'DROP',extra);t.title='Tap to switch keep / drop';t.onclick=()=>{k?keep.delete(m.id):keep.add(m.id);draw()};grid.append(t)}
+    const parts=[head,grid];
+    if(oth.length)parts.push(el('div',{className:'others',textContent:'Others: '+oth.map(a=>`${a.who} keeps ${a.keep.length} of ${g.members.length}${a.note?' — “'+a.note+'”':''}`).join(' · ')}));
+    const c=burst?'':carry(g,keep);
     if(c)parts.push(el('div',{className:'carry',textContent:`The kept copy's date may be wrong — it will get ${c} from the copy with the camera date.`}));
     if(!keep.size)parts.push(el('div',{className:'carry',textContent:'Keep at least one.'}));
-    const b1=el('button',{className:'btn sec',textContent:'Compare large'});b1.onclick=()=>compare(g);
-    const b2=el('button',{className:'btn sec',textContent:'Not duplicates — keep all'});b2.onclick=()=>{g.members.forEach(m=>keep.add(m.id));draw()};
-    const b3=el('button',{className:'btn sec',textContent:'Use suggestion'});b3.onclick=()=>{keep.clear();g.default_keep.forEach(i=>keep.add(i));draw()};
-    parts.push(el('div',{className:'acts'},[b1,b2,b3]));box.replaceChildren(...parts)};
+    const b1=el('button',{className:'btn sec',textContent:'Compare large'});b1.onclick=()=>compare(g,keep,'DROP');
+    const b2=el('button',{className:'btn sec',textContent:'Keep all'});b2.onclick=()=>{g.members.forEach(m=>keep.add(m.id));draw()};
+    const acts=[b1,b2];
+    if(!burst){const b3=el('button',{className:'btn sec',textContent:'Use suggestion'});b3.onclick=()=>{keep.clear();g.default_keep.forEach(i=>keep.add(i));draw()};acts.push(b3)}
+    parts.push(el('div',{className:'acts'},acts),note);box.replaceChildren(...parts)};
   draw();return box}
-function compare(g){const keep=state(g),c=$('cmp');c.replaceChildren();
+function spotRow(g){
+  const keep=new Set(g.default_keep),grid=el('div',{className:'mem'});
+  for(const m of [...g.members].sort((a,b)=>keep.has(b.id)-keep.has(a.id))){const t=tile(m,keep.has(m.id),keep.has(m.id)?'KEEP':'TRASH',[fullMeta(m)]);t.onclick=()=>compare(g,keep,'TRASH');grid.append(t)}
+  const head=el('div',{className:'rh'},[el('b',{textContent:`${g.members.length} copies`}),el('span',{className:'chip',textContent:'automatic choice'})]);
+  if(g.new_date)head.append(el('span',{className:'chip w',textContent:'keeper gets date '+g.new_date}));
+  const b=el('button',{className:'btn sec',textContent:'Compare large'});b.onclick=()=>compare(g,keep,'TRASH');
+  return el('div',{className:'row'},[head,grid,el('div',{className:'acts'},[b])])}
+async function loadSpot(){const list=$('list');list.replaceChildren(el('p',{className:'muted',textContent:'Loading…'}));
+  try{const r=await fetch('api/dups/spot',{cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error);spot=d.groups;if(mode==='spot')render()}
+  catch(e){list.replaceChildren(el('p',{className:'msg err',textContent:'Could not load: '+e.message}))}}
+function compare(g,keep,off){const c=$('cmp');c.replaceChildren();
   for(const m of g.members){const k=keep.has(m.id);const media=m.type==='VIDEO'?el('video',{src:'vid/'+m.id,poster:'img/p/'+m.id,controls:true,playsInline:true,preload:'metadata'}):el('img',{src:'img/p/'+m.id,alt:m.name});
-    c.append(el('figure',{className:k?'keep':'trash'},[media,el('figcaption',{textContent:`${k?'KEEP':'TRASH'} · ${m.name} · ${m.wh} · ${mb(m.bytes)} · ${m.date}${m.trust?' (trusted)':''}`})]))}
+    c.append(el('figure',{className:k?'keep':'trash'},[media,el('figcaption',{textContent:`${k?'KEEP':off} · ${m.name} · ${m.wh} · ${mb(m.bytes)} · ${m.date}${m.trust?' (camera date)':''}`})]))}
   $('ov').classList.add('on')}
 $('ovc').onclick=()=>{$('cmp').querySelectorAll('video').forEach(v=>v.pause());$('ov').classList.remove('on')};
-$('flt').onchange=()=>{page=0;render()};$('und').onchange=()=>{page=0;render()};
-$('pp').onclick=()=>{if(page>0){page--;render()}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render()}};
+for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>{mode=b.dataset.mode;page=0;try{localStorage.setItem('pr_dmode',mode)}catch(e){};setMsg('');render();window.scrollTo(0,0)};
+$('und').onchange=()=>{page=0;render()};
+$('pp').onclick=()=>{if(page>0){page--;render();window.scrollTo(0,0)}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render();window.scrollTo(0,0)}};
+$('respot').onclick=()=>{spot=[];render();window.scrollTo(0,0)};
 function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c}
 $('save').onclick=async()=>{
   if(!who)return setMsg('First pick who is deciding (top of the page).','err');
   const gs=view.slice(page*PER,page*PER+PER);if(!gs.length)return;
-  if(gs.some(g=>!state(g).size))return setMsg('Every group needs at least one kept item.','err');
-  const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i))}});
+  if(gs.some(g=>!state(g).size))return setMsg('Every group needs at least one kept photo.','err');
+  const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i)),note:(notes[g.id]||'').trim()}});
   $('save').disabled=true;
   try{const r=await fetch('api/dups/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({who,decisions})});const d=await r.json();if(!r.ok)throw new Error(d.error||'save failed');
-    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();setMsg(`Saved ${d.saved.length} decisions.`,'ok')}
+    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();window.scrollTo(0,0);setMsg(`Saved ${d.saved.length} decisions.`,'ok')}
   catch(e){setMsg('Could not save: '+e.message,'err')}finally{$('save').disabled=false}};
 load().catch(e=>{$('list').textContent='Could not load: '+e.message});
 </script>

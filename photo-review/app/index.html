@@ -174,18 +174,18 @@ function renderOwner(g,card,note,save,foot,post){
     if(!choice)return setMsg('Pick one or more people, or "Not sure".','err');
     post({group:g.id,who,unsure:choice==='unsure',owners:choice==='unsure'?[]:[...owners],note:note.value.trim(),excluded:[...excluded]});
   };
-  const isCam=g.camera!=='CD/DVD videos',v=g.videos||0,p=g.count-v;
+  const isCam=g.camera!=='CD/DVD videos'&&!g.say,v=g.videos||0,p=g.count-v; // g.say: a follow-up group (odd ones out)
   const facts=[el('span',{className:'chip',textContent:isCam?(v?`${g.count.toLocaleString()} items in the library (${p.toLocaleString()} photos, ${v} videos)`:`${g.count.toLocaleString()} photos in the library`):itemsLabel(g)}),
     el('span',{className:'chip',textContent:`Years: ${g.years[0]===g.years[1]?g.years[0]:g.years[0]+'–'+g.years[1]}`})];
   for(const f of g.folders||[])facts.push(el('span',{className:'chip',textContent:'Folder: '+f}));
   card.replaceChildren(
     el('h1',{textContent:isCam?'Camera: '+g.title:g.title}),
     el('div',{className:'facts'},facts),
-    el('div',{className:'conflict',textContent:isCam?`Everything taken with this camera is below. Whose camera or phone was it?`:`Old family videos from CDs/DVDs. Whose are they?${g.suggest?' Hussam thinks: '+g.suggest+'.':''}`}),
+    el('div',{className:'conflict',textContent:g.say||(isCam?`Everything taken with this camera is below. Whose camera or phone was it?`:`Old family videos from CDs/DVDs. Whose are they?${g.suggest?' Hussam thinks: '+g.suggest+'.':''}`)}),
     el('a',{className:'jumpq',href:'#q',textContent:'Skip to the question ↓'}),
     gridFor(g),
     el('div',{className:'hint',textContent:'Videos play when opened. If something doesn\'t belong, switch to "Mark odd ones out" and tap it.'}),
-    el('div',{className:'q',id:'q'},[el('h2',{textContent:isCam?'Whose camera was this? (pick all that apply)':'Whose videos are these? (pick all that apply)'}),opts,note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
+    el('div',{className:'q',id:'q'},[el('h2',{textContent:isCam?'Whose camera was this? (pick all that apply)':g.say?'Whose are these? (pick all that apply)':'Whose videos are these? (pick all that apply)'}),opts,note,previous(g),el('div',{className:'msg',id:'msg'}),foot])
   );
 }
 function renderDate(g,card,note,save,foot,post){

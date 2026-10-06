@@ -6,7 +6,7 @@ Read-only toward Immich: thumbnails, transcoded videos and originals come from I
 folders (all mounted read-only); answers are appended to /data/answers.jsonl.
 Applying answers to Immich is a separate, logged step.
 """
-import datetime, fcntl, json, os, re
+import datetime, fcntl, json, os, random, re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -143,9 +143,15 @@ class H(BaseHTTPRequestHandler):
         if path in ('/dups', '/dups.html'):
             return self.send(200, open(os.path.join(HERE, 'dups.html'), encoding='utf-8').read(),
                              'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
-        if path == '/api/dups/state':
-            return self.send(200, {'people': PEOPLE, 'groups': dups()['groups'], 'answers': answers('dup_answers.jsonl')},
+        if path == '/api/dups/state':  # only bursts and disputed dates are reviewed; copies follow the rule
+            g = [x for x in dups()['groups'] if x['cls'] != 'copy']
+            ids = {x['id'] for x in g}
+            return self.send(200, {'people': PEOPLE, 'groups': g, 'copies': len(dups()['groups']) - len(g),
+                                   'answers': [a for a in answers('dup_answers.jsonl') if a.get('group') in ids]},
                              extra={'Cache-Control': 'no-store'})
+        if path == '/api/dups/spot':  # read-only: random copy groups, to eyeball the automatic choice
+            c = [x for x in dups()['groups'] if x['cls'] == 'copy']
+            return self.send(200, {'groups': random.sample(c, min(20, len(c)))}, extra={'Cache-Control': 'no-store'})
         if path in ('/', '/index.html'):
             return self.send(200, open(os.path.join(HERE, 'index.html'), encoding='utf-8').read(),
                              'text/html; charset=utf-8', {'Cache-Control': 'no-store'})

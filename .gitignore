@@ -11,3 +11,7 @@
 
 # Homepage writes runtime logs into its config dir
 homepage/config/logs/
+
+# Python bytecode
+__pycache__/
+*.pyc
