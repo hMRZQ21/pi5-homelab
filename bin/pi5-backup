@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# pi5-backup: the Pi half of the nightly backup pull. Packs the hand-made state that lives outside git
+# (library scan artifacts, the mirror sync script, the git hooks, Photo Review answers); no secrets.
+#   make                  build the archive, print "name sha256 bytes entries"
+#   drop <name> <sha256>  delete the Pi copy, only if its hash matches the one the puller computed
+set -euo pipefail
+STAGE=/tmp/pi5-backup
+LAST="$HOME/.pi5-backup-last"
+SOURCES=("${HOME#/}/scan" "${HOME#/}/bin/pi5-sync" opt/stacks/.git/hooks/post-commit opt/stacks/.git/hooks/post-merge srv/photo-review)
+die() { echo "pi5-backup: $*" >&2; exit 1; }
+
+case "${1:-}" in
+make)
+  umask 077
+  mkdir -p "$STAGE"
+  left=$(find "$STAGE" -maxdepth 1 -name 'pi5-backup-*.tgz' | wc -l)
+  [ "$left" -eq 0 ] || echo "pi5-backup: $left undropped copy(ies) in $STAGE" >&2
+  name="pi5-backup-$(date +%Y%m%d-%H%M).tgz"
+  f="$STAGE/$name"
+  [ ! -e "$f" ] || die "$name already exists"
+  rc=0
+  tar -C / -czf "$f.tmp" "${SOURCES[@]}" || rc=$?
+  # tar exit 1 = a file changed while being read (e.g. a new review answer); the archive is still valid
+  [ "$rc" -le 1 ] || { rm -f "$f.tmp"; die "tar failed (exit $rc)"; }
+  n=$(tar -tzf "$f.tmp" | wc -l) || { rm -f "$f.tmp"; die "archive does not read back"; }
+  mv "$f.tmp" "$f"
+  echo "$name $(sha256sum "$f" | cut -d' ' -f1) $(stat -c %s "$f") $n"
+  ;;
+drop)
+  name=${2:-}
+  want=${3:-}
+  [[ $name =~ ^pi5-backup-[0-9]{8}-[0-9]{4}\.tgz$ ]] || die "bad name"
+  [[ $want =~ ^[0-9a-f]{64}$ ]] || die "bad hash"
+  f="$STAGE/$name"
+  [ -f "$f" ] || die "no $name in $STAGE"
+  have=$(sha256sum "$f" | cut -d' ' -f1)
+  [ "$have" = "$want" ] || die "hash mismatch, kept $name"
+  rm -f "$f"
+  echo "$name $have $(date -Is)" > "$LAST"
+  echo "dropped $name"
+  ;;
+*)
+  echo "usage: pi5-backup make | drop <name> <sha256>" >&2
+  exit 2
+  ;;
+esac

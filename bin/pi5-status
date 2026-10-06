@@ -19,5 +19,12 @@ pub=$(timeout 15 git -C "$HOME/pi5-public" ls-remote origin refs/heads/master 2>
 [ "$last" = "$head" ] && st=in-sync || st=BEHIND
 row mirror "last synced ${last:-none} ($st) | public ${pub:-unreachable} | log: $(tail -n 1 "$HOME/pi5-sync.log" 2>/dev/null | cut -c1-60)"
 
+if read -r bn _ bt < "$HOME/.pi5-backup-last" 2>/dev/null; then
+  b="last pulled $bn, $(( ($(date +%s) - $(date -d "$bt" +%s)) / 3600 ))h ago"
+else
+  b="never pulled"
+fi
+row backup "$b | undropped on Pi $(find /tmp/pi5-backup -maxdepth 1 -name 'pi5-backup-*.tgz' 2>/dev/null | wc -l)"
+
 echo containers:
 docker ps -a --format '{{.Names}}|{{.Status}}' | sort | while IFS='|' read -r n s; do printf '  %-24s %s\n' "$n" "$s"; done
