@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pi5-status: read-only health summary of the Pi -- host, thermals, repo, public mirror, containers.
+# Changes nothing (no fetch, no index refresh, no writes), so it is safe to pre-approve as one exact command.
+set -u
+S=/opt/stacks
+export GIT_OPTIONAL_LOCKS=0
+row() { printf '%-8s %s\n' "$1" "$2"; }
+
+row host "$(hostname) | $(uptime -p) | load $(cut -d' ' -f1-3 /proc/loadavg)"
+t=$(vcgencmd measure_temp 2>/dev/null | cut -d= -f2); th=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)
+row hw "soc ${t:-?} | throttled ${th:-?} | mem $(free -h | awk '/^Mem:/{print $7" free of "$2}') | disk $(df -h / | awk 'NR==2{print $3" used of "$2}')"
+
+head=$(git -C "$S" rev-parse --short HEAD)
+gh=$(timeout 15 git -C "$S" ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7)
+row repo "HEAD $head \"$(git -C "$S" log -1 --format=%s | cut -c1-50)\" | GitHub main ${gh:-unreachable} | uncommitted $(git -C "$S" status --porcelain | wc -l)"
+
+last=$(cut -c1-7 "$HOME/.pi5-sync-last" 2>/dev/null)
+pub=$(timeout 15 git -C "$HOME/pi5-public" ls-remote origin refs/heads/master 2>/dev/null | cut -c1-7)
+[ "$last" = "$head" ] && st=in-sync || st=BEHIND
+row mirror "last synced ${last:-none} ($st) | public ${pub:-unreachable} | log: $(tail -n 1 "$HOME/pi5-sync.log" 2>/dev/null | cut -c1-60)"
+
+echo containers:
+docker ps -a --format '{{.Names}}|{{.Status}}' | sort | while IFS='|' read -r n s; do printf '  %-24s %s\n' "$n" "$s"; done
