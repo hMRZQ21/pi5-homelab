@@ -109,7 +109,7 @@ function itemsLabel(g,n){const v=nVid(g),p=g.assets.length-v;n=(n??g.total??g.as
 function ansText(a){if(a.unsure)return'not sure';if(a.kind==='owner')return(a.owners||[]).join(', ');return a.year+(a.month?', '+MONTHS[a.month-1]:'')}
 async function load(){
   const r=await fetch('api/state',{cache:'no-store'});S=await r.json();
-  if(gi>=S.groups.length)gi=0;renderWho();render();
+  if(!Number.isInteger(gi)||gi<0||gi>=S.groups.length)gi=0;renderWho();render();
 }
 function renderWho(){
   const w=$('who');w.replaceChildren('Who\'s answering?');
