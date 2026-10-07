@@ -192,10 +192,13 @@ function renderDate(g,card,note,save,foot,post){
   const opts=el('div',{className:'opts'}),seen=new Set();
   const add=(y,why)=>{if(seen.has(y))return;seen.add(y);const b=el('button',{className:'opt'},[String(y),el('small',{textContent:why})]);b.onclick=()=>pick(b,{year:y});opts.append(b);return b};
   let pre=null,monthHint='',say;
-  if(g.say){ // video rounds
-    if(g.known_year)pre=add(g.known_year,'Already set — keep it');
-    (g.current_years||[]).forEach(y=>add(y,'What it shows now'));
-    say=g.say;
+  if(g.say){ // video rounds and round-5 groups
+    if(g.options){g.options.forEach((o,i)=>{const b=add(o.year,o.why);if(i===0&&g.preselect)pre=b})}  // suggested years from the data
+    else{
+      if(g.known_year)pre=add(g.known_year,'Already set — keep it');
+      (g.current_years||[]).forEach(y=>add(y,'What it shows now'));
+    }
+    say=g.say;monthHint=g.month_hint||'';
   }else{ // photo rounds (1–2)
     const folderYears=g.folder_years||[],camYears=(g.camera_years||[]).map(Number);
     if(folderYears.length&&folderYears.length<=6)folderYears.forEach(y=>add(y,'From the folder name'));
@@ -208,8 +211,8 @@ function renderDate(g,card,note,save,foot,post){
   const ob=el('button',{className:'opt'},['Another year: ',other,el('small',{textContent:'Type it in'})]);
   ob.onclick=e=>{pick(ob,{year:'other'});if(e.target!==other)other.focus()};other.oninput=()=>pick(ob,{year:'other'});opts.append(ob);
   const ub=el('button',{className:'opt'},['Not sure',el('small',{textContent:'Skip — let someone else answer'})]);ub.onclick=()=>pick(ub,{unsure:true});opts.append(ub);
-  if(pre)pick(pre,{year:g.known_year});
   const ms=el('select',{id:'month'});ms.append(el('option',{value:'',textContent:"Don't know"}));MONTHS.forEach((m,i)=>ms.append(el('option',{value:i+1,textContent:m})));
+  if(pre){pick(pre,{year:g.options?g.options[0].year:g.known_year});if(g.known_month)ms.value=g.known_month}
   save.onclick=()=>{
     if(!who)return setMsg('First pick who is answering (top of the page).','err');
     if(!choice)return setMsg('Pick a year, or "Not sure".','err');

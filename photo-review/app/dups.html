@@ -91,7 +91,10 @@ function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep
 function carry(g,keep){ // date the single keeper will get, if it lacks a trusted date
   if(keep.size!==1)return'';const k=g.members.find(m=>keep.has(m.id));if(k.trust)return'';
   const t=g.members.find(m=>m.trust&&m.id!==k.id);return t&&t.date.slice(0,16)!==k.date.slice(0,16)?t.date:''}
-async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};notes={};renderWho();render()}
+async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S=await r.json();cur={};notes={};
+  if(S.closed){for(const e of document.querySelectorAll('.ctl,.bar,#foot,#spotbar,#intro,#who'))e.style.display='none';
+    $('prog').textContent='Duplicates · done';$('list').replaceChildren(el('div',{className:'row'},[el('p',{textContent:S.closed})]));return}
+  renderWho();render()}
 function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};notes={};renderWho();render()};w.append(b)}}
 function render(){
   for(const b of document.querySelectorAll('[data-mode]')){const n=b.dataset.mode==='spot'?S.copies:S.groups.filter(g=>g.cls===b.dataset.mode).length;

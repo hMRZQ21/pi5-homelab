@@ -144,13 +144,17 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, open(os.path.join(HERE, 'dups.html'), encoding='utf-8').read(),
                              'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
         if path == '/api/dups/state':  # only bursts and disputed dates are reviewed; copies follow the rule
+            closed = os.path.join(DATA, 'dups_closed.txt')  # present once the decisions are applied in Immich
+            if os.path.exists(closed):
+                return self.send(200, {'people': PEOPLE, 'groups': [], 'copies': 0, 'answers': [],
+                                       'closed': open(closed, encoding='utf-8').read().strip()}, extra={'Cache-Control': 'no-store'})
             g = [x for x in dups()['groups'] if x['cls'] != 'copy']
             ids = {x['id'] for x in g}
             return self.send(200, {'people': PEOPLE, 'groups': g, 'copies': len(dups()['groups']) - len(g),
                                    'answers': [a for a in answers('dup_answers.jsonl') if a.get('group') in ids]},
                              extra={'Cache-Control': 'no-store'})
         if path == '/api/dups/spot':  # read-only: random copy groups, to eyeball the automatic choice
-            c = [x for x in dups()['groups'] if x['cls'] == 'copy']
+            c = [x for x in dups()['groups'] if x['cls'] == 'copy' and not os.path.exists(os.path.join(DATA, 'dups_closed.txt'))]
             return self.send(200, {'groups': random.sample(c, min(20, len(c)))}, extra={'Cache-Control': 'no-store'})
         if path in ('/', '/index.html'):
             return self.send(200, open(os.path.join(HERE, 'index.html'), encoding='utf-8').read(),
