@@ -92,6 +92,6 @@
               label: Transcodes
               format: number
               suffix: " GB"
-            - field: trash_bytes
+            - field: trash
               label: Trash
-              format: bytes
+              format: text

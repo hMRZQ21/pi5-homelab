@@ -92,8 +92,8 @@ for a in "$@"; do
       unused_n=0; [ -n "$unused" ] && unused_n=$(printf '%s\n' "$unused" | wc -l)
       purge=""; [ "${tn:-0}" -gt 0 ] 2>/dev/null && purge=$(date -d "$tmin +30 days" +%F)
       tmp=$(mktemp "$JSON.XXXXXX") || { echo "cannot write $JSON" >&2; exit 1; }
-      printf '{"updated":"%s","used_gb":%s,"total_gb":%s,"used_pct":%s,"originals_gb":%s,"transcodes_gb":%s,"thumbs_gb":%s,"docker_gb":%s,"trash_items":%s,"trash_bytes":%s,"trash_first_purge":"%s","unused_images":%s}\n' \
-        "$(date -Is)" "$(gb0 "$used")" "$(gb0 "$total")" "$pct" "$(gb0 "$orig")" "$(gb0 "$enc")" "$(gb0 "$thumbs")" "$(gb0 "$dock")" "${tn:-0}" "${tbytes:-0}" "$purge" "$unused_n" > "$tmp"
+      printf '{"updated":"%s","used_gb":%s,"total_gb":%s,"used_pct":%s,"originals_gb":%s,"transcodes_gb":%s,"thumbs_gb":%s,"docker_gb":%s,"trash_items":%s,"trash_bytes":%s,"trash":"%s GB","trash_first_purge":"%s","unused_images":%s}\n' \
+        "$(date -Is)" "$(gb0 "$used")" "$(gb0 "$total")" "$pct" "$(gb0 "$orig")" "$(gb0 "$enc")" "$(gb0 "$thumbs")" "$(gb0 "$dock")" "${tn:-0}" "${tbytes:-0}" "$(gb "${tbytes:-0}")" "$purge" "$unused_n" > "$tmp"
       chmod 644 "$tmp"; mv -f "$tmp" "$JSON"
       echo; echo "wrote $JSON" ;;
   esac
