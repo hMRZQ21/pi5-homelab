@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# pi5-disk: where the disk goes, and what could be cleaned. Report only: it deletes nothing.
+# Usage: pi5-disk [--log]
+#   --log  also appends one summary line to ~/scan/logs/disk-history.tsv (the only write; the nightly backup covers ~/scan)
+set -u
+LOG="$HOME/scan/logs/disk-history.tsv"
+gb() { awk -v b="${1:-0}" 'BEGIN{printf "%.1f", b/1073741824}'; }
+sz() { sudo -n du -xsb "$@" 2>/dev/null | awk '{s+=$1} END{print s+0}'; }
+sec() { printf '\n== %s\n' "$1"; }
+
+used=$(df -B1 --output=used / | tail -1 | tr -d ' ')
+total=$(df -B1 --output=size / | tail -1 | tr -d ' ')
+pct=$(awk -v u="$used" -v t="$total" 'BEGIN{printf "%.0f", 100*u/t}')
+
+orig=$(sz /srv/immich/library/library)
+enc=$(sz /srv/immich/library/encoded-video)
+thumbs=$(sz /srv/immich/library/thumbs)
+upload=$(sz /srv/immich/library/upload)
+pgdata=$(sz /srv/immich/postgres)
+dumps=$(sz /srv/immich/db-backups)
+mlcache=$(sz /srv/immich/model-cache)
+dock=$(sz /var/lib/containerd /var/lib/docker)
+os=$(sz /usr /opt /var/cache /var/log)
+home=$(sz "$HOME")
+other_srv=$(( $(sz /srv) - orig - enc - thumbs - upload - pgdata - dumps - mlcache ))
+sum=$(( orig + enc + thumbs + upload + pgdata + dumps + mlcache + other_srv + dock + os + home ))
+rest=$(( used - sum ))
+
+echo "pi5-disk | $(date -Is) | / ${pct}% used: $(gb "$used") of $(gb "$total") GB"
+
+sec "Where it goes (GB)"
+printf '  %-34s %8s\n' "Immich originals" "$(gb "$orig")"
+printf '  %-34s %8s\n' "Immich encoded videos (transcodes)" "$(gb "$enc")"
+printf '  %-34s %8s\n' "Immich thumbnails" "$(gb "$thumbs")"
+printf '  %-34s %8s\n' "Immich upload dir" "$(gb "$upload")"
+printf '  %-34s %8s\n' "Immich DB + DB dumps + ML cache" "$(gb $(( pgdata + dumps + mlcache )))"
+printf '  %-34s %8s\n' "Other under /srv" "$(gb "$other_srv")"
+printf '  %-34s %8s\n' "Docker (images, layers, cache)" "$(gb "$dock")"
+printf '  %-34s %8s\n' "OS (/usr, /opt, caches, logs)" "$(gb "$os")"
+printf '  %-34s %8s\n' "Home (~, incl. ~/scan)" "$(gb "$home")"
+printf '  %-34s %8s\n' "Unaccounted (rest of /)" "$(gb "$rest")"
+
+sec "Docker"
+docker system df 2>/dev/null | sed 's/^/  /'
+inuse=$(docker inspect -f '{{.Image}}' $(docker ps -aq) 2>/dev/null | sort -u)
+unused=$(docker images --no-trunc --format '{{.ID}}|{{.Repository}}:{{.Tag}}|{{.Size}}' | while IFS='|' read -r id name size; do
+  grep -qx "$id" <<<"$inuse" || printf '  %s  %s\n' "$size" "$name"
+done)
+echo "  unused images (no container uses them):"
+[ -n "$unused" ] && echo "$unused" | sed 's/^/  /' || echo "    none"
+
+sec "Immich trash (restorable until it purges)"
+dbu=$(grep -s '^DB_USERNAME=' /opt/stacks/immich/.env | cut -d= -f2)
+dbn=$(grep -s '^DB_DATABASE_NAME=' /opt/stacks/immich/.env | cut -d= -f2)
+sql="select count(*), coalesce(min(\"deletedAt\")::date::text,'-'), coalesce(max(\"deletedAt\")::date::text,'-') from asset where \"deletedAt\" is not null"
+trash=$(docker exec -i immich_postgres psql -U "${dbu:-postgres}" -d "${dbn:-immich}" -tAq <<<"$sql" 2>/dev/null)
+if [ -n "$trash" ]; then
+  IFS='|' read -r tn tmin tmax <<<"$trash"
+  if [ "${tn:-0}" -gt 0 ]; then
+    echo "  $tn items; purge (30 days after delete) from $(date -d "$tmin +30 days" +%F) to $(date -d "$tmax +30 days" +%F)"
+  else
+    echo "  empty"
+  fi
+else
+  tn=""; echo "  unavailable (Immich DB not answering)"
+fi
+
+sec "Strays"
+loose=$(find "$HOME" -maxdepth 1 -type f ! -name '.*' ! -name pi5-sync.log -printf '%f ' 2>/dev/null)
+echo "  loose files in ~ (keepers belong in ~/scan): ${loose:-none}"
+echo "  scratch in /tmp owned by $(id -un): $(find /tmp -mindepth 1 -maxdepth 1 -user "$(id -un)" ! -name pi5-backup ! -name 'tmux-*' 2>/dev/null | wc -l) (tmpfs: RAM, not backed up)"
+echo "  backups waiting on the Pi: $(find /tmp/pi5-backup -maxdepth 1 -name 'pi5-backup-*.tgz' 2>/dev/null | wc -l)"
+
+sec "Cleanup candidates (nothing is run; each needs a yes)"
+[ -n "$unused" ] && echo "  unused images: docker rmi <name>   (exact names above, never prune -a)"
+echo "  build cache:   docker builder prune -f   (currently $(docker system df --format '{{.Type}} {{.Reclaimable}}' 2>/dev/null | awk '/^Build/{print $3}'))"
+[ -n "$loose" ] && echo "  loose files in ~: review, then move into ~/scan/logs or delete"
+
+if [ "${1:-}" = "--log" ]; then
+  mkdir -p "$(dirname "$LOG")"
+  [ -s "$LOG" ] || printf 'date\tused_gb\ttotal_gb\toriginals_gb\ttranscodes_gb\tthumbs_gb\tdocker_gb\ttrash_items\n' > "$LOG"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$(gb "$used")" "$(gb "$total")" "$(gb "$orig")" "$(gb "$enc")" "$(gb "$thumbs")" "$(gb "$dock")" "${tn:-}" >> "$LOG"
+  echo; echo "logged to $LOG"
+fi
