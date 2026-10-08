@@ -7,6 +7,7 @@
 set -u
 LOG="$HOME/scan/logs/disk-history.tsv"
 JSON="${PI5_DISK_JSON:-/srv/homepage/disk/disk.json}"
+gb0() { awk -v b="${1:-0}" 'BEGIN{printf "%.0f", b/1073741824}'; }
 gb() { awk -v b="${1:-0}" 'BEGIN{printf "%.1f", b/1073741824}'; }
 sz() { sudo -n du -xsb "$@" 2>/dev/null | awk '{s+=$1} END{print s+0}'; }
 sec() { printf '\n== %s\n' "$1"; }
@@ -91,7 +92,7 @@ for a in "$@"; do
       purge=""; [ "${tn:-0}" -gt 0 ] 2>/dev/null && purge=$(date -d "$tmin +30 days" +%F)
       tmp=$(mktemp "$JSON.XXXXXX") || { echo "cannot write $JSON" >&2; exit 1; }
       printf '{"updated":"%s","used_gb":%s,"total_gb":%s,"used_pct":%s,"originals_gb":%s,"transcodes_gb":%s,"thumbs_gb":%s,"docker_gb":%s,"trash_items":%s,"trash_first_purge":"%s","unused_images":%s}\n' \
-        "$(date -Is)" "$(gb "$used")" "$(gb "$total")" "$pct" "$(gb "$orig")" "$(gb "$enc")" "$(gb "$thumbs")" "$(gb "$dock")" "${tn:-0}" "$purge" "$unused_n" > "$tmp"
+        "$(date -Is)" "$(gb0 "$used")" "$(gb0 "$total")" "$pct" "$(gb0 "$orig")" "$(gb0 "$enc")" "$(gb0 "$thumbs")" "$(gb0 "$dock")" "${tn:-0}" "$purge" "$unused_n" > "$tmp"
       chmod 644 "$tmp"; mv -f "$tmp" "$JSON"
       echo; echo "wrote $JSON" ;;
   esac
