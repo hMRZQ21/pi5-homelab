@@ -1,0 +1,7 @@
+[Unit]
+Description=Pi disk report: refresh the Homepage Disk tile and append the history line
+
+[Service]
+Type=oneshot
+User=hussam
+ExecStart=/opt/stacks/bin/pi5-disk --log --json

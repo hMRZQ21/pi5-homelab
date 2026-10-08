@@ -70,3 +70,28 @@
           version: 4
           metric: network:eth0
           chart: true
+
+    - Disk:
+        icon: mdi-harddisk
+        description: Pi storage, updated daily
+        widget:
+          type: customapi
+          # Static file written by bin/pi5-disk --json, served from Homepage's own public/ folder (see compose.yaml).
+          url: http://127.0.0.1:3000/disk/disk.json
+          refreshInterval: 300000
+          mappings:
+            - field: used_pct
+              label: Used
+              format: number
+              suffix: " %"
+            - field: originals_gb
+              label: Originals
+              format: number
+              suffix: " GB"
+            - field: transcodes_gb
+              label: Transcodes
+              format: number
+              suffix: " GB"
+            - field: trash_items
+              label: Trash
+              format: number
