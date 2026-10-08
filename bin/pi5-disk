@@ -85,6 +85,7 @@ for a in "$@"; do
     --log)
       mkdir -p "$(dirname "$LOG")"
       [ -s "$LOG" ] || printf 'date\tused_gb\ttotal_gb\toriginals_gb\ttranscodes_gb\tthumbs_gb\tdocker_gb\ttrash_items\n' > "$LOG"
+      grep -v "^$(date +%F)"$'\t' "$LOG" > "$LOG.tmp" && mv -f "$LOG.tmp" "$LOG"   # one row per day: a re-run replaces today's
       printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$(gb "$used")" "$(gb "$total")" "$(gb "$orig")" "$(gb "$enc")" "$(gb "$thumbs")" "$(gb "$dock")" "${tn:-}" >> "$LOG"
       echo; echo "logged to $LOG" ;;
     --json)
