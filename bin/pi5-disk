@@ -56,17 +56,17 @@ echo "  unused images (no container uses them):"
 sec "Immich trash (restorable until it purges)"
 dbu=$(grep -s '^DB_USERNAME=' /opt/stacks/immich/.env | cut -d= -f2)
 dbn=$(grep -s '^DB_DATABASE_NAME=' /opt/stacks/immich/.env | cut -d= -f2)
-sql="select count(*), coalesce(min(\"deletedAt\")::date::text,'-'), coalesce(max(\"deletedAt\")::date::text,'-') from asset where \"deletedAt\" is not null"
+sql="select count(*), coalesce(min(a.\"deletedAt\")::date::text,'-'), coalesce(max(a.\"deletedAt\")::date::text,'-'), coalesce(sum(e.\"fileSizeInByte\"),0) from asset a left join asset_exif e on e.\"assetId\" = a.id where a.\"deletedAt\" is not null"
 trash=$(docker exec -i immich_postgres psql -U "${dbu:-postgres}" -d "${dbn:-immich}" -tAq <<<"$sql" 2>/dev/null)
 if [ -n "$trash" ]; then
-  IFS='|' read -r tn tmin tmax <<<"$trash"
+  IFS='|' read -r tn tmin tmax tbytes <<<"$trash"
   if [ "${tn:-0}" -gt 0 ]; then
-    echo "  $tn items; purge (30 days after delete) from $(date -d "$tmin +30 days" +%F) to $(date -d "$tmax +30 days" +%F)"
+    echo "  $tn items, $(gb "${tbytes:-0}") GB (originals only); purge (30 days after delete) from $(date -d "$tmin +30 days" +%F) to $(date -d "$tmax +30 days" +%F)"
   else
     echo "  empty"
   fi
 else
-  tn=""; echo "  unavailable (Immich DB not answering)"
+  tn=""; tbytes=0; echo "  unavailable (Immich DB not answering)"
 fi
 
 sec "Strays"
@@ -84,16 +84,16 @@ for a in "$@"; do
   case "$a" in
     --log)
       mkdir -p "$(dirname "$LOG")"
-      [ -s "$LOG" ] || printf 'date\tused_gb\ttotal_gb\toriginals_gb\ttranscodes_gb\tthumbs_gb\tdocker_gb\ttrash_items\n' > "$LOG"
+      [ -s "$LOG" ] || printf 'date\tused_gb\ttotal_gb\toriginals_gb\ttranscodes_gb\tthumbs_gb\tdocker_gb\ttrash_items\ttrash_gb\n' > "$LOG"
       grep -v "^$(date +%F)"$'\t' "$LOG" > "$LOG.tmp" && mv -f "$LOG.tmp" "$LOG"   # one row per day: a re-run replaces today's
-      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$(gb "$used")" "$(gb "$total")" "$(gb "$orig")" "$(gb "$enc")" "$(gb "$thumbs")" "$(gb "$dock")" "${tn:-}" >> "$LOG"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$(gb "$used")" "$(gb "$total")" "$(gb "$orig")" "$(gb "$enc")" "$(gb "$thumbs")" "$(gb "$dock")" "${tn:-}" "$(gb "${tbytes:-0}")" >> "$LOG"
       echo; echo "logged to $LOG" ;;
     --json)
       unused_n=0; [ -n "$unused" ] && unused_n=$(printf '%s\n' "$unused" | wc -l)
       purge=""; [ "${tn:-0}" -gt 0 ] 2>/dev/null && purge=$(date -d "$tmin +30 days" +%F)
       tmp=$(mktemp "$JSON.XXXXXX") || { echo "cannot write $JSON" >&2; exit 1; }
-      printf '{"updated":"%s","used_gb":%s,"total_gb":%s,"used_pct":%s,"originals_gb":%s,"transcodes_gb":%s,"thumbs_gb":%s,"docker_gb":%s,"trash_items":%s,"trash_first_purge":"%s","unused_images":%s}\n' \
-        "$(date -Is)" "$(gb0 "$used")" "$(gb0 "$total")" "$pct" "$(gb0 "$orig")" "$(gb0 "$enc")" "$(gb0 "$thumbs")" "$(gb0 "$dock")" "${tn:-0}" "$purge" "$unused_n" > "$tmp"
+      printf '{"updated":"%s","used_gb":%s,"total_gb":%s,"used_pct":%s,"originals_gb":%s,"transcodes_gb":%s,"thumbs_gb":%s,"docker_gb":%s,"trash_items":%s,"trash_bytes":%s,"trash_first_purge":"%s","unused_images":%s}\n' \
+        "$(date -Is)" "$(gb0 "$used")" "$(gb0 "$total")" "$pct" "$(gb0 "$orig")" "$(gb0 "$enc")" "$(gb0 "$thumbs")" "$(gb0 "$dock")" "${tn:-0}" "${tbytes:-0}" "$purge" "$unused_n" > "$tmp"
       chmod 644 "$tmp"; mv -f "$tmp" "$JSON"
       echo; echo "wrote $JSON" ;;
   esac
