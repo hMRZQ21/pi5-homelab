@@ -2,7 +2,7 @@
 - Infrastructure:
     - Portainer:
         icon: portainer.png
-        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443
+        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443/#!/3/docker/containers
         description: Container management
         server: my-docker
         container: portainer
@@ -33,6 +33,7 @@
 
     - Postgres:
         icon: postgresql.png
+        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443/#!/3/docker/containers
         description: Immich database
         server: my-docker
         container: immich_postgres
@@ -40,6 +41,7 @@
 
     - Machine Learning:
         icon: mdi-brain
+        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443/#!/3/docker/containers
         description: Search and face detection
         server: my-docker
         container: immich_machine_learning
@@ -47,6 +49,7 @@
 
     - Valkey:
         icon: valkey.png
+        href: https://{{HOMEPAGE_VAR_TAILNET_HOST}}:9443/#!/3/docker/containers
         description: Immich cache and queue
         server: my-docker
         container: immich_redis
