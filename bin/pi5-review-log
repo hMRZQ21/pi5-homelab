@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""Read-only: who used the review pages and whether their answers were saved. usage: pi5-review-log [days]  (default 14)
+Per device: page opens, names picked, refused or failed saves, page errors, and the answers that reached the server."""
+import collections as C, datetime, json, os, sys
+LIVE = os.environ.get('PI5_REVIEW_DIR', '/srv/photo-review')
+days = int(sys.argv[1]) if len(sys.argv) > 1 else 14
+since = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat(timespec='seconds')
+def rows(name):
+    p = os.path.join(LIVE, name)
+    out = []
+    if os.path.exists(p):
+        for l in open(p, encoding='utf-8'):
+            try: r = json.loads(l)
+            except ValueError: continue
+            if r.get('ts', '') >= since: out.append(r)
+    return out
+dev = C.defaultdict(lambda: C.defaultdict(list))
+for r in rows('events.jsonl'): dev[r['client']][r['type']].append(r)
+saved = C.defaultdict(C.Counter)
+for f, label in (('answers.jsonl', 'questions'), ('dup_answers.jsonl', 'duplicates'), ('pair_answers.jsonl', 'pairs')):
+    for r in rows(f): saved[r['client']][(r['who'], label)] += 1; dev[r['client']]
+print(f'since {since[:16]} (events are logged from the day this tool version went live; answers go back further)')
+for c in sorted(dev, key=lambda c: max([r['ts'] for v in dev[c].values() for r in v] or [''])):
+    e = dev[c]; ts = [r['ts'] for v in e.values() for r in v]
+    ua = (next((r['ua'] for v in e.values() for r in v), '') or '')
+    print(f"\n{c}  {ua[:70]}")
+    print(f"  opens {len(e['open'])} (last {max([r['ts'] for r in e['open']], default='-')}) | names picked: {sorted({r['who'] for r in e['pick']}) or '-'} | refused {len(e['refused'])} | failed saves {len(e['save_failed'])} | page errors {len(e['js_error']) + len(e['load_failed'])}")
+    for r in (e['refused'] + e['save_failed'] + e['js_error'] + e['load_failed'])[-5:]: print(f"    {r['ts']} {r['type']} on {r['page']}: {r['detail'][:100]}")
+    print('  answers saved:', ', '.join(f'{w} {n} on {p}' for (w, p), n in sorted(saved[c].items())) or 'none')

@@ -78,6 +78,9 @@ const PER=10,$=id=>document.getElementById(id);
 const el=(t,p={},k=[])=>{const e=document.createElement(t);Object.assign(e,p);for(const c of k)e.append(c);return e};
 let S={people:[],groups:[],answers:[]},who=null,page=0,cur={},notes={},view=[],mode='edit';
 try{who=localStorage.getItem('pr_who')}catch(e){}
+function ev(type,detail){try{fetch('api/event',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({page:'pairs',type,who:who||null,detail:String(detail||'').slice(0,300)})}).catch(()=>{})}catch(e){}}
+addEventListener('error',e=>ev('js_error',(e.message||'')+' '+(e.filename||'').split('/').pop()+':'+(e.lineno||'')));addEventListener('unhandledrejection',e=>ev('js_error',String(e.reason&&e.reason.message||e.reason)));
+ev('open',innerWidth+'x'+innerHeight);
 try{const m=localStorage.getItem('pr_pmode');if(['edit','studio','frames'].includes(m))mode=m}catch(e){}
 const INTRO={
   edit:'Your iPhone saved each of these photos twice: the original, and a version with edits (its name has an E, like IMG_E1234). We kept the edited one and moved the original to the trash, where it is deleted for good in early November. Green = keep, red = leave in the trash. Keep both if you want the original back too. “Save this page” records every pair on the page exactly as you see it.',
@@ -90,7 +93,7 @@ function latest(gid,w=who){let r=null;for(const a of S.answers)if(a.group===gid&
 function others(gid){const o={};for(const a of S.answers)if(a.group===gid&&a.who!==who)o[a.who]=a;return Object.values(o)}
 function state(g){if(!cur[g.id]){const l=latest(g.id);cur[g.id]=new Set(l?l.keep:g.default_keep);notes[g.id]=l&&l.note||''}return cur[g.id]}
 async function load(){const r=await fetch('api/pairs/state',{cache:'no-store'});S=await r.json();cur={};notes={};renderWho();render()}
-function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};notes={};renderWho();render()};w.append(b)}}
+function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};ev('pick',p);cur={};notes={};renderWho();render()};w.append(b)}}
 function render(){
   for(const b of document.querySelectorAll('[data-mode]')){const n=S.groups.filter(g=>g.cls===b.dataset.mode).length;
     b.textContent=`${LABEL[b.dataset.mode]} (${n})`;b.classList.toggle('on',b.dataset.mode===mode)}
@@ -143,7 +146,7 @@ $('ovc').onclick=()=>$('ov').classList.remove('on');
 for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>{mode=b.dataset.mode;page=0;try{localStorage.setItem('pr_pmode',mode)}catch(e){};setMsg('');render();window.scrollTo(0,0)};
 $('und').onchange=()=>{page=0;render()};
 $('pp').onclick=()=>{if(page>0){page--;render();window.scrollTo(0,0)}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render();window.scrollTo(0,0)}};
-function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c}
+function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c;if(c==='err')ev(/save/i.test(t)?'save_failed':'refused',t)}
 $('save').onclick=async()=>{
   if(!who)return setMsg('First pick who is deciding (top of the page).','err');
   const gs=view.slice(page*PER,page*PER+PER);if(!gs.length)return;
@@ -151,9 +154,9 @@ $('save').onclick=async()=>{
   const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i)),note:(notes[g.id]||'').trim()}});
   $('save').disabled=true;
   try{const r=await fetch('api/pairs/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({who,decisions})});const d=await r.json();if(!r.ok)throw new Error(d.error||'save failed');
-    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();window.scrollTo(0,0);setMsg(`Saved ${d.saved.length} decisions.`,'ok')}
+    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();window.scrollTo(0,0);setMsg(`Saved ✓ ${d.saved.length} decisions as ${who}.`,'ok')}
   catch(e){setMsg('Could not save: '+e.message,'err')}finally{$('save').disabled=false}};
-load().catch(e=>{$('list').textContent='Could not load: '+e.message});
+load().catch(e=>{$('list').textContent='Could not load: '+e.message;ev('load_failed',e.message)});
 </script>
 </body>
 </html>

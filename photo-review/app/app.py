@@ -220,6 +220,8 @@ class H(BaseHTTPRequestHandler):
             return self.decide(dups, 'dup_answers.jsonl')
         if self.path == '/api/pairs/decide':
             return self.decide(pairs, 'pair_answers.jsonl')
+        if self.path == '/api/event':
+            return self.event()
         if self.path != '/api/answer':
             return self.send(404, {'error': 'not found'})
         n = int(self.headers.get('Content-Length') or 0)
@@ -298,6 +300,34 @@ def _decide(self, src, fname):
 
 
 H.decide = _decide
+
+EVENTS = {'open', 'pick', 'refused', 'save_failed', 'load_failed', 'js_error'}  # what the pages report about themselves
+
+
+def _event(self):  # who opened which page, who picked a name, what the page refused or failed to do; never touches Immich
+    n = int(self.headers.get('Content-Length') or 0)
+    if n <= 0 or n > 4096:
+        return self.send(400, {'error': 'bad size'})
+    try:
+        d = json.loads(self.rfile.read(n))
+    except ValueError:
+        return self.send(400, {'error': 'bad json'})
+    if d.get('type') not in EVENTS or d.get('page') not in ('questions', 'dups', 'pairs') or d.get('who') not in PEOPLE + [None]:
+        return self.send(400, {'error': 'bad event'})
+    p = os.path.join(DATA, 'events.jsonl')
+    if os.path.exists(p) and os.path.getsize(p) > 5 << 20:  # keep the log bounded; answers are never affected
+        return self.send(200, {'ok': True, 'full': True})
+    rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'), 'client': self.client_address[0],
+           'ua': (self.headers.get('User-Agent') or '')[:140], 'page': d['page'], 'type': d['type'], 'who': d.get('who'),
+           'detail': str(d.get('detail') or '')[:300]}
+    with open(p, 'a', encoding='utf-8') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        f.write(json.dumps(rec, ensure_ascii=False) + '\n')
+        fcntl.flock(f, fcntl.LOCK_UN)
+    return self.send(200, {'ok': True})
+
+
+H.event = _event
 
 
 if __name__ == '__main__':

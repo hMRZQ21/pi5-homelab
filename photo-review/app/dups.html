@@ -77,6 +77,9 @@ const PER=10,$=id=>document.getElementById(id);
 const el=(t,p={},k=[])=>{const e=document.createElement(t);Object.assign(e,p);for(const c of k)e.append(c);return e};
 let S={people:[],groups:[],answers:[],copies:0},who=null,page=0,cur={},notes={},view=[],mode='burst',spot=[];
 try{who=localStorage.getItem('pr_who')}catch(e){}
+function ev(type,detail){try{fetch('api/event',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({page:'dups',type,who:who||null,detail:String(detail||'').slice(0,300)})}).catch(()=>{})}catch(e){}}
+addEventListener('error',e=>ev('js_error',(e.message||'')+' '+(e.filename||'').split('/').pop()+':'+(e.lineno||'')));addEventListener('unhandledrejection',e=>ev('js_error',String(e.reason&&e.reason.message||e.reason)));
+ev('open',innerWidth+'x'+innerHeight);
 try{const m=localStorage.getItem('pr_dmode');if(['burst','review','spot'].includes(m))mode=m}catch(e){}
 const INTRO={
   burst:'Each box is a burst: similar shots taken seconds apart. They are all kept unless you tap one to drop it. A photo is only removed if nobody keeps it, and anything removed can be restored for 30 days.',
@@ -95,7 +98,7 @@ async function load(){const r=await fetch('api/dups/state',{cache:'no-store'});S
   if(S.closed){for(const e of document.querySelectorAll('.ctl,.bar,#foot,#spotbar,#intro,#who'))e.style.display='none';
     $('prog').textContent='Duplicates · done';$('list').replaceChildren(el('div',{className:'row'},[el('p',{textContent:S.closed})]));return}
   renderWho();render()}
-function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};cur={};notes={};renderWho();render()};w.append(b)}}
+function renderWho(){const w=$('who');w.replaceChildren("Who's deciding? ");for(const p of S.people){const b=el('button',{className:'pill'+(p===who?' on':''),textContent:p});b.onclick=()=>{who=p;try{localStorage.setItem('pr_who',p)}catch(e){};ev('pick',p);cur={};notes={};renderWho();render()};w.append(b)}}
 function render(){
   for(const b of document.querySelectorAll('[data-mode]')){const n=b.dataset.mode==='spot'?S.copies:S.groups.filter(g=>g.cls===b.dataset.mode).length;
     b.textContent={burst:'Bursts',review:'Dates disagree',spot:'Spot-check copies'}[b.dataset.mode]+` (${n})`;b.classList.toggle('on',b.dataset.mode===mode)}
@@ -164,7 +167,7 @@ for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>{mode=b.da
 $('und').onchange=()=>{page=0;render()};
 $('pp').onclick=()=>{if(page>0){page--;render();window.scrollTo(0,0)}};$('np').onclick=()=>{if((page+1)*PER<view.length){page++;render();window.scrollTo(0,0)}};
 $('respot').onclick=()=>{spot=[];render();window.scrollTo(0,0)};
-function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c}
+function setMsg(t,c=''){const m=$('msg');m.textContent=t;m.className='msg '+c;if(c==='err')ev(/save/i.test(t)?'save_failed':'refused',t)}
 $('save').onclick=async()=>{
   if(!who)return setMsg('First pick who is deciding (top of the page).','err');
   const gs=view.slice(page*PER,page*PER+PER);if(!gs.length)return;
@@ -172,9 +175,9 @@ $('save').onclick=async()=>{
   const decisions=gs.map(g=>{const k=state(g);return{group:g.id,keep:[...k],trash:g.members.map(m=>m.id).filter(i=>!k.has(i)),note:(notes[g.id]||'').trim()}});
   $('save').disabled=true;
   try{const r=await fetch('api/dups/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({who,decisions})});const d=await r.json();if(!r.ok)throw new Error(d.error||'save failed');
-    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();window.scrollTo(0,0);setMsg(`Saved ${d.saved.length} decisions.`,'ok')}
+    S.answers.push(...d.saved);const moved=(page+1)*PER<view.length&&!$('und').checked;if(moved)page++;render();window.scrollTo(0,0);setMsg(`Saved ✓ ${d.saved.length} decisions as ${who}.`,'ok')}
   catch(e){setMsg('Could not save: '+e.message,'err')}finally{$('save').disabled=false}};
-load().catch(e=>{$('list').textContent='Could not load: '+e.message});
+load().catch(e=>{$('list').textContent='Could not load: '+e.message;ev('load_failed',e.message)});
 </script>
 </body>
 </html>
