@@ -19,22 +19,31 @@ FIRST, MAXPAGE = 60, 240  # items sent per group up front / per 'show more'
 HERE = os.path.dirname(os.path.abspath(__file__))
 _cache = {'mtime': None, 'doc': {}, 'groups': [], 'light': [], 'index': {}, 'files': {}}
 _dcache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
+_pcache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
+
+
+def _members_doc(cache, name):  # dups.json / pairs.json: groups of members {id, t, p, v?, ...}
+    p = os.path.join(DATA, name)
+    if not os.path.exists(p):
+        return cache
+    m = os.path.getmtime(p)
+    if m != cache['mtime']:
+        g = json.load(open(p, encoding='utf-8'))['groups']
+        files = {a['id']: (a['t'], a['p'], a.get('v')) for x in g for a in x['members']}
+        cache.update(mtime=m, groups=g, index={x['id']: x for x in g}, files=files)
+    return cache
 
 
 def dups():
-    p = os.path.join(DATA, 'dups.json')
-    if not os.path.exists(p):
-        return _dcache
-    m = os.path.getmtime(p)
-    if m != _dcache['mtime']:
-        g = json.load(open(p, encoding='utf-8'))['groups']
-        files = {a['id']: (a['t'], a['p'], a.get('v')) for x in g for a in x['members']}
-        _dcache.update(mtime=m, groups=g, index={x['id']: x for x in g}, files=files)
-    return _dcache
+    return _members_doc(_dcache, 'dups.json')
+
+
+def pairs():
+    return _members_doc(_pcache, 'pairs.json')
 
 
 def fileinfo(aid):
-    return groups()['files'].get(aid) or dups()['files'].get(aid)
+    return groups()['files'].get(aid) or dups()['files'].get(aid) or pairs()['files'].get(aid)
 
 
 
@@ -143,6 +152,15 @@ class H(BaseHTTPRequestHandler):
         if path in ('/dups', '/dups.html'):
             return self.send(200, open(os.path.join(HERE, 'dups.html'), encoding='utf-8').read(),
                              'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
+        if path in ('/pairs', '/pairs.html'):
+            return self.send(200, open(os.path.join(HERE, 'pairs.html'), encoding='utf-8').read(),
+                             'text/html; charset=utf-8', {'Cache-Control': 'no-store'})
+        if path == '/api/pairs/state':  # pairs the trash audit raised (rev 28): which of the two to keep
+            g = pairs()['groups']
+            ids = {x['id'] for x in g}
+            return self.send(200, {'people': PEOPLE, 'groups': g,
+                                   'answers': [a for a in answers('pair_answers.jsonl') if a.get('group') in ids]},
+                             extra={'Cache-Control': 'no-store'})
         if path == '/api/dups/state':  # only bursts and disputed dates are reviewed; copies follow the rule
             closed = os.path.join(DATA, 'dups_closed.txt')  # present once the decisions are applied in Immich
             if os.path.exists(closed):
@@ -199,7 +217,9 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == '/api/dups/decide':
-            return self.decide()
+            return self.decide(dups, 'dup_answers.jsonl')
+        if self.path == '/api/pairs/decide':
+            return self.decide(pairs, 'pair_answers.jsonl')
         if self.path != '/api/answer':
             return self.send(404, {'error': 'not found'})
         n = int(self.headers.get('Content-Length') or 0)
@@ -244,7 +264,7 @@ class H(BaseHTTPRequestHandler):
         return self.send(200, {'ok': True, 'saved': rec})
 
 
-def _decide(self):
+def _decide(self, src, fname):
     n = int(self.headers.get('Content-Length') or 0)
     if n <= 0 or n > 1 << 20:
         return self.send(400, {'error': 'bad size'})
@@ -254,7 +274,7 @@ def _decide(self):
         return self.send(400, {'error': 'bad json'})
     if d.get('who') not in PEOPLE:
         return self.send(400, {'error': 'pick who is answering'})
-    idx, recs, ts = dups()['index'], [], datetime.datetime.now().isoformat(timespec='seconds')
+    idx, recs, ts = src()['index'], [], datetime.datetime.now().isoformat(timespec='seconds')
     for x in d.get('decisions') or []:
         g = idx.get(x.get('group'))
         if not g:
@@ -267,7 +287,7 @@ def _decide(self):
                      'note': str(x.get('note') or '')[:500], 'client': self.client_address[0]})
     if not recs:
         return self.send(400, {'error': 'nothing to save'})
-    with open(os.path.join(DATA, 'dup_answers.jsonl'), 'a', encoding='utf-8') as f:
+    with open(os.path.join(DATA, fname), 'a', encoding='utf-8') as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         for r in recs:
             f.write(json.dumps(r, ensure_ascii=False) + '\n')
