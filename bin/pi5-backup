@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pi5-backup: the Pi half of the nightly backup pull. Packs the hand-made state that lives outside git
-# (library scan artifacts, the mirror sync script, the git hooks, Photo Review answers); no secrets.
+# (library scan artifacts, the mirror sync script, the git hooks, Photo Review answers) plus the newest Immich database dump; no secrets.
 #   make                  build the archive, print "name sha256 bytes entries"
 #   drop <name> <sha256>  delete the Pi copy, only if its hash matches the one the puller computed
 set -euo pipefail
@@ -19,7 +19,10 @@ make)
   f="$STAGE/$name"
   [ ! -e "$f" ] || die "$name already exists"
   rc=0
-  tar -C / -czf "$f.tmp" "${SOURCES[@]}" || rc=$?
+  # newest Immich database dump (all dates, dedup and trash decisions live in the DB); older ones stay on the Pi
+  dump=$(ls -t /srv/immich/db-backups/immich-db-backup-*.sql.gz 2>/dev/null | head -1 || true)
+  [ -n "$dump" ] || echo "pi5-backup: no Immich database dump found, backing up without it" >&2
+  tar -C / -czf "$f.tmp" "${SOURCES[@]}" ${dump:+"${dump#/}"} || rc=$?
   # tar exit 1 = a file changed while being read (e.g. a new review answer); the archive is still valid
   [ "$rc" -le 1 ] || { rm -f "$f.tmp"; die "tar failed (exit $rc)"; }
   n=$(tar -tzf "$f.tmp" | wc -l) || { rm -f "$f.tmp"; die "archive does not read back"; }
