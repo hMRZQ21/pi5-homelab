@@ -83,7 +83,7 @@ addEventListener('error',e=>ev('js_error',(e.message||'')+' '+(e.filename||'').s
 ev('open',innerWidth+'x'+innerHeight);
 try{const m=localStorage.getItem('pr_pmode');if(['edit','studio','frames'].includes(m))mode=m}catch(e){}
 const INTRO={
-  edit:'Your iPhone saved each of these photos twice: the original, and a version with edits (its name has an E, like IMG_E1234). We kept the edited one and moved the original to the trash, where it is deleted for good in early November. Green = keep, red = leave in the trash. Keep both if you want the original back too. “Save this page” records every pair on the page exactly as you see it.',
+  edit:'These photos are in the library twice: the camera original and another copy of the same shot (an edited or converted version, or a trimmed video). Green = keep, red = drop (a dropped copy goes to the Immich trash and stays recoverable for 30 days). Keep both if you want both. “Save this page” records every pair on the page exactly as you see it.',
   studio:'Portrait-style photos that look alike but may be different poses. The ones in red are in the trash now. Green = keep, red = leave in the trash. “Save this page” records every group on the page exactly as you see it.',
   frames:'Burst shots taken seconds apart. They were put back in the library after a mix-up and are all kept. Tap any you want to drop. “Save this page” records every group on the page exactly as you see it.'};
 const LABEL={edit:'Edited vs original',studio:'Studio look-alikes',frames:'Burst frames'};
