@@ -10,6 +10,20 @@ row host "$(hostname) | $(uptime -p) | load $(cut -d' ' -f1-3 /proc/loadavg)"
 t=$(vcgencmd measure_temp 2>/dev/null | cut -d= -f2); th=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)
 row hw "soc ${t:-?} | throttled ${th:-?} | mem $(free -h | awk '/^Mem:/{print $7" free of "$2}') | disk $(df -h / | awk 'NR==2{print $3" used of "$2}')"
 
+# fan: the kernel's fan driver (hwmon "pwmfan") and its cooling device must both exist, otherwise the thermal zone has nothing to drive
+# (seen once after a firmware update, when the fan stayed off). PI5_HWMON_DIR / PI5_THERMAL_DIR only exist so this can be tested.
+hwd=${PI5_HWMON_DIR:-/sys/class/hwmon}; thd=${PI5_THERMAL_DIR:-/sys/class/thermal}
+fh=""; for d in "$hwd"/hwmon*; do [ "$(cat "$d/name" 2>/dev/null)" = pwmfan ] && fh=$d; done
+fc=""; for d in "$thd"/cooling_device*; do [ "$(cat "$d/type" 2>/dev/null)" = pwm-fan ] && fc=$d; done
+if [ -n "$fh" ] && [ -n "$fc" ]; then
+  lv=$(cat "$fc/cur_state" 2>/dev/null); rpm=$(cat "$fh/fan1_input" 2>/dev/null)
+  tach="${rpm:-?} rpm"; [ "${lv:-0}" != 0 ] && [ "${rpm:-0}" = 0 ] && tach="tach reads 0 rpm"
+  fan="pwmfan ok | level ${lv:-?}/$(cat "$fc/max_state" 2>/dev/null) | pwm $(cat "$fh/pwm1" 2>/dev/null) | $tach"
+else
+  fan="MISSING:$([ -z "$fh" ] && echo ' no pwmfan device')$([ -z "$fc" ] && echo ' no pwm-fan cooling device') (fan not under kernel control; check dtparam=cooling_fan=on in config.txt)"
+fi
+row fan "$fan"
+
 head=$(git -C "$S" rev-parse --short HEAD)
 gh=$(timeout 15 git -C "$S" ls-remote origin refs/heads/main 2>/dev/null | cut -c1-7)
 row repo "HEAD $head \"$(git -C "$S" log -1 --format=%s | cut -c1-50)\" | GitHub main ${gh:-unreachable} | uncommitted $(git -C "$S" status --porcelain | wc -l)"
