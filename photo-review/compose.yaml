@@ -8,6 +8,18 @@ services:
     image: python:3.13.16-alpine3.24
     container_name: photo-review
     restart: unless-stopped
+    # Hardening: the app only writes to /data (a bind mount) and listens on a port above 1024.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # /healthz answers while the server is alive; docker ps, Homepage and pi5-status show healthy or unhealthy (busybox wget ships with the image).
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     user: "1000:1000"
     command: ["python", "-u", "/app/app.py"]
     ports:
