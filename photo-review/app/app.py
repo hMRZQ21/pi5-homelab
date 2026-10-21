@@ -21,6 +21,20 @@ _cache = {'mtime': None, 'doc': {}, 'groups': [], 'light': [], 'index': {}, 'fil
 _dcache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
 _pcache = {'mtime': None, 'groups': [], 'index': {}, 'files': {}}
 
+FULL = 'the answers file is full (10 MB); tell Hussam'
+CAP = 10 << 20  # bytes per answers file: a runaway client must not grow it, and every page load that reads it, without limit
+
+
+def append(name, recs, cap=CAP):  # one JSON line per record, under a lock; False when the file is already at its cap
+    with open(os.path.join(DATA, name), 'a', encoding='utf-8') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        if os.fstat(f.fileno()).st_size > cap:
+            return False
+        f.write(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in recs))
+        f.flush()
+        os.fsync(f.fileno())
+    return True  # closing the file releases the lock
+
 
 def _members_doc(cache, name):  # dups.json / pairs.json: groups of members {id, t, p, v?, ...}
     p = os.path.join(DATA, name)
@@ -83,9 +97,11 @@ def inside(root, rel):
 
 class H(BaseHTTPRequestHandler):
     server_version = 'photo-review'
+    timeout = 30  # seconds per socket operation
 
     def log_message(self, fmt, *args):
-        if not (self.path.startswith('/img/') or self.path.startswith('/vid/')):
+        p = getattr(self, 'path', '')  # not set yet when a client times out before sending a request line
+        if not (p.startswith('/img/') or p.startswith('/vid/')):
             super().log_message(fmt, *args)
 
     def send(self, code, body, ctype='application/json; charset=utf-8', extra=None):
@@ -141,8 +157,8 @@ class H(BaseHTTPRequestHandler):
                         break
                     self.wfile.write(buf)
                     left -= len(buf)
-        except (BrokenPipeError, ConnectionResetError):
-            pass  # the browser stopped reading (seek / closed the player)
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            pass  # the browser stopped reading (seek / closed the player / paused for over 30 s: it asks again)
 
     def do_HEAD(self):
         return self.do_GET()
@@ -257,12 +273,8 @@ class H(BaseHTTPRequestHandler):
             if month is not None and not (isinstance(month, int) and 1 <= month <= 12):
                 return self.send(400, {'error': 'bad month'})
             rec.update(tier=g.get('tier', 'year'), year=None if unsure else year, month=None if unsure else month)
-        with open(os.path.join(DATA, 'answers.jsonl'), 'a', encoding='utf-8') as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            f.write(json.dumps(rec, ensure_ascii=False) + '\n')
-            f.flush()
-            os.fsync(f.fileno())
-            fcntl.flock(f, fcntl.LOCK_UN)
+        if not append('answers.jsonl', [rec]):
+            return self.send(507, {'error': FULL})
         return self.send(200, {'ok': True, 'saved': rec})
 
 
@@ -289,13 +301,8 @@ def _decide(self, src, fname):
                      'note': str(x.get('note') or '')[:500], 'client': self.client_address[0]})
     if not recs:
         return self.send(400, {'error': 'nothing to save'})
-    with open(os.path.join(DATA, fname), 'a', encoding='utf-8') as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        for r in recs:
-            f.write(json.dumps(r, ensure_ascii=False) + '\n')
-        f.flush()
-        os.fsync(f.fileno())
-        fcntl.flock(f, fcntl.LOCK_UN)
+    if not append(fname, recs):
+        return self.send(507, {'error': FULL})
     return self.send(200, {'ok': True, 'saved': recs})
 
 
@@ -314,16 +321,11 @@ def _event(self):  # who opened which page, who picked a name, what the page ref
         return self.send(400, {'error': 'bad json'})
     if d.get('type') not in EVENTS or d.get('page') not in ('questions', 'dups', 'pairs') or d.get('who') not in PEOPLE + [None]:
         return self.send(400, {'error': 'bad event'})
-    p = os.path.join(DATA, 'events.jsonl')
-    if os.path.exists(p) and os.path.getsize(p) > 5 << 20:  # keep the log bounded; answers are never affected
-        return self.send(200, {'ok': True, 'full': True})
     rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'), 'client': self.client_address[0],
            'ua': (self.headers.get('User-Agent') or '')[:140], 'page': d['page'], 'type': d['type'], 'who': d.get('who'),
            'detail': str(d.get('detail') or '')[:300]}
-    with open(p, 'a', encoding='utf-8') as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        f.write(json.dumps(rec, ensure_ascii=False) + '\n')
-        fcntl.flock(f, fcntl.LOCK_UN)
+    if not append('events.jsonl', [rec], 5 << 20):  # keep the log bounded; answers are never affected
+        return self.send(200, {'ok': True, 'full': True})
     return self.send(200, {'ok': True})
 
 
