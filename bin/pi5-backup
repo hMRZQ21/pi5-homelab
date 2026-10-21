@@ -4,7 +4,7 @@
 #   make                  build the archive, print "name sha256 bytes entries"
 #   drop <name> <sha256>  delete the Pi copy, only if its hash matches the one the puller computed
 set -euo pipefail
-STAGE=/tmp/pi5-backup
+STAGE=${PI5_STAGE:-/tmp/pi5-backup}  # PI5_STAGE only exists for testing
 LAST="$HOME/.pi5-backup-last"
 SOURCES=("${HOME#/}/scan" "${HOME#/}/bin/pi5-sync" opt/stacks/.git/hooks/post-commit opt/stacks/.git/hooks/post-merge srv/photo-review)
 die() { echo "pi5-backup: $*" >&2; exit 1; }
@@ -15,6 +15,8 @@ make)
   mkdir -p "$STAGE"
   left=$(find "$STAGE" -maxdepth 1 -name 'pi5-backup-*.tgz' | wc -l)
   [ "$left" -eq 0 ] || echo "pi5-backup: $left undropped copy(ies) in $STAGE" >&2
+  # a failed pull leaves its archive here, and /tmp is RAM: keep only the newest earlier one (the new archive replaces the rest)
+  { ls -t "$STAGE"/pi5-backup-*.tgz 2>/dev/null || true; } | tail -n +2 | xargs -r rm -f
   name="pi5-backup-$(date +%Y%m%d-%H%M).tgz"
   f="$STAGE/$name"
   [ ! -e "$f" ] || die "$name already exists"
