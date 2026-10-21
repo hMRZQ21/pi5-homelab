@@ -5,14 +5,15 @@
 #   1. model-cache named volume -> bind mount (no named volumes anywhere in this build)
 #   2. db-backups bind-mounted at /data/backups (dumps live
 #      beside the library, not inside it)
-#   3. IMMICH_VERSION pinned to an exact release in .env, never "release"
+#   3. IMMICH_VERSION pinned to an exact release in .env, never "release"; compose refuses to start without it
+#      (upstream falls back to the floating "release" tag, which could migrate the database on its own)
 
 name: immich
 
 services:
   immich-server:
     container_name: immich_server
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:?set IMMICH_VERSION in /opt/stacks/immich/.env}
     volumes:
       - ${UPLOAD_LOCATION}:/data
       - /srv/immich/db-backups:/data/backups
@@ -30,7 +31,7 @@ services:
 
   immich-machine-learning:
     container_name: immich_machine_learning
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:?set IMMICH_VERSION in /opt/stacks/immich/.env}
     volumes:
       - /srv/immich/model-cache:/cache
     env_file:
