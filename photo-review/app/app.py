@@ -63,7 +63,10 @@ def fileinfo(aid):
 
 def groups():
     p = os.path.join(DATA, 'groups.json')
-    m = os.path.getmtime(p)
+    try:
+        m = os.path.getmtime(p)
+    except OSError:  # no round on the page right now, or the file is being replaced: serve what was loaded last (like dups.json and pairs.json)
+        return _cache
     if m != _cache['mtime']:
         doc = json.load(open(p, encoding='utf-8'))
         g = doc['groups']
