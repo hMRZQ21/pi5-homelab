@@ -20,8 +20,10 @@ make)
   [ ! -e "$f" ] || die "$name already exists"
   rc=0
   # newest Immich database dump (all dates, dedup and trash decisions live in the DB); older ones stay on the Pi
-  dump=$(ls -t /srv/immich/db-backups/immich-db-backup-*.sql.gz 2>/dev/null | head -1 || true)
+  dump=$(ls -t "${PI5_DUMP_DIR:-/srv/immich/db-backups}"/immich-db-backup-*.sql.gz 2>/dev/null | head -1 || true)
   [ -n "$dump" ] || echo "pi5-backup: no Immich database dump found, backing up without it" >&2
+  # the nightly dump job can stop without anyone noticing: say so when the newest dump is over 36 h old (2160 min)
+  [ -z "$dump" ] || [ -n "$(find "$dump" -mmin -2160)" ] || echo "pi5-backup: the newest Immich dump is over 36 h old ($(basename "$dump")), check the nightly dump job" >&2
   tar -C / -czf "$f.tmp" "${SOURCES[@]}" ${dump:+"${dump#/}"} || rc=$?
   # tar exit 1 = a file changed while being read (e.g. a new review answer); the archive is still valid
   [ "$rc" -le 1 ] || { rm -f "$f.tmp"; die "tar failed (exit $rc)"; }

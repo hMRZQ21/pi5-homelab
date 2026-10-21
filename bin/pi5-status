@@ -38,7 +38,14 @@ if read -r bn _ bt < "$HOME/.pi5-backup-last" 2>/dev/null; then
 else
   b="never pulled"
 fi
-row backup "$b | undropped on Pi $(find /tmp/pi5-backup -maxdepth 1 -name 'pi5-backup-*.tgz' 2>/dev/null | wc -l)"
+# the archive carries the newest Immich dump: show its age, and flag it when the nightly dump job has stopped (PI5_DUMP_DIR only exists for testing)
+d=$(ls -t "${PI5_DUMP_DIR:-/srv/immich/db-backups}"/immich-db-backup-*.sql.gz 2>/dev/null | head -1)
+if [ -n "$d" ]; then
+  dh=$(( ($(date +%s) - $(stat -c %Y "$d")) / 3600 )); ds="DB dump ${dh}h old"; [ "$dh" -gt 36 ] && ds="DB dump STALE (${dh}h old)"
+else
+  ds="DB dump NONE"
+fi
+row backup "$b | undropped on Pi $(find /tmp/pi5-backup -maxdepth 1 -name 'pi5-backup-*.tgz' 2>/dev/null | wc -l) | $ds"
 
 echo containers:
 docker ps -a --format '{{.Names}}|{{.Status}}' | sort | while IFS='|' read -r n s; do printf '  %-24s %s\n' "$n" "$s"; done
