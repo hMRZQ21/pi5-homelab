@@ -2,7 +2,7 @@
 # Immich Postgres on-demand dump. Keeps the newest $KEEP verified dumps.
 set -euo pipefail
 
-DEST=/srv/immich/db-backups
+DEST=${PI5_DUMP_DIR:-/srv/immich/db-backups}  # PI5_DUMP_DIR only exists for testing
 CONTAINER=immich_postgres
 DB=immich
 DBUSER=postgres
@@ -10,6 +10,7 @@ KEEP=14
 
 STAMP=$(date +%Y-%m-%d-%H%M)
 TMP="${DEST}/.partial-${STAMP}.sql.gz"
+trap 'rm -f "$TMP"' EXIT   # a failed dump must not leave its half-written file behind
 OUT="${DEST}/manual-db-${STAMP}.sql.gz"
 
 mkdir -p "$DEST"
