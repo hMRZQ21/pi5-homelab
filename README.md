@@ -57,6 +57,7 @@ credential rotation, not a `.gitignore` fix.
 
 ```
 /opt/stacks/                 <- this repo
+├── bin/                     <- pi5-status, pi5-disk, pi5-backup, pi5-review-log: health and backup helpers, no secrets
 ├── portainer/compose.yaml
 ├── homepage/compose.yaml
 ├── homepage/config/         <- tracked: settings, services, widgets, bookmarks,
@@ -64,7 +65,7 @@ credential rotation, not a `.gitignore` fix.
 │   └── logs/                <- ignored: Homepage writes here
 ├── immich/compose.yaml
 │   └── .env                 <- ignored
-└── photo-review/            <- compose.yaml + app/ (stdlib Python, no dependencies)
+└── photo-review/            <- compose.yaml + app/ (stdlib Python, no dependencies) + tests/
 
 /srv/                        <- runtime state, never in git
 ├── portainer/data/
@@ -79,10 +80,10 @@ credential rotation, not a `.gitignore` fix.
 
 | Service | Role | Access |
 |---|---|---|
-| Portainer CE | container inspection, browser | admin only |
-| Homepage | status dashboard | admin only |
-| Immich | family photo library | household + remote |
-| Photo Review | family review of disputed photo dates; records answers only, never writes to Immich | household + remote |
+| Portainer CE | container inspection, browser | login required; reachable on the home network and the tailnet |
+| Homepage | status dashboard | no login; reachable on the home network and the tailnet |
+| Immich | family photo library | household + remote, login required |
+| Photo Review | family review of disputed photo dates; records answers only, never writes to Immich | household + remote, no login (a name picker only) |
 
 Outside Docker, on the host: **Tailscale** (access layer — no ports are forwarded
 on the router) and **lazydocker** (terminal container inspection).
