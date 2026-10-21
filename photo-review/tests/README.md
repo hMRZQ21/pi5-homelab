@@ -1,4 +1,16 @@
-# Photo Review browser tests
+# Photo Review tests
+
+## Unit tests (no browser, no server; Python 3 only)
+
+    PYTHONDONTWRITEBYTECODE=1 python3 photo-review/tests/test_app.py -v
+
+27 tests for the logic where a mistake costs the most: the path guard (`inside`: traversal, absolute paths, a sibling folder with
+the same prefix, a symlink out), the keep-or-trash validation (`_decide`), the capped append (`append`, with parallel writers) and
+the video Range parser. They use throwaway folders; the live data is never touched. The path-guard tests need Linux (the app uses
+`/` paths) and are skipped on Windows. `APP_PATH=/path/to/app.py` points them at another copy: break a check on purpose in a copy
+and the matching test must fail (rev 41: 8 deliberate breaks, 8 caught).
+
+## Browser tests (manual)
 
 Playwright scripts for the review pages. They were written against the data of 2026-10-11/13, so the counts inside
 them (155 pair groups, 121 edit pairs, 21 live groups, ...) are a snapshot and need updating before a re-run.
