@@ -1,0 +1,39 @@
+name: pihole
+
+# DNS filter, TV-only pilot. One client (the TV) points at it; the router stays its second DNS server.
+# Config and databases: /srv/pihole/etc-pihole (bind mount). Admin password: /srv/secrets/pihole.env (created by hand, never in git).
+# .env (gitignored) must set PIHOLE_BIND_IP, the Pi's LAN address: DNS is published on that address only, not on the tailnet.
+# Not started yet. Tested once on a throwaway container (same file, other ports): healthy, blocks and answers,
+# logs the real client address.
+# No read_only: the image's start-up script writes into the image's root folder (/macvendor.db, /crontab.txt).
+# Capabilities: SETFCAP and DAC_OVERRIDE were each proven needed (start fails without them). CHOWN/SETUID/SETGID
+# are the start-up script's own steps, not tested one by one. NET_BIND_SERVICE and NET_RAW proved unnecessary.
+services:
+  pihole:
+    image: pihole/pihole:2026.10.0   # pin the digest after the first pull, like the Immich images
+    container_name: pihole
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - SETFCAP
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    env_file:
+      - /srv/secrets/pihole.env   # FTLCONF_webserver_api_password=...
+    environment:
+      - TZ=America/New_York
+      # needed on Docker's default bridge network (upstream docs); exposure is decided by the published ports below
+      - FTLCONF_dns_listeningMode=ALL
+    ports:
+      - "${PIHOLE_BIND_IP:?set PIHOLE_BIND_IP in .env}:53:53/udp"
+      - "${PIHOLE_BIND_IP}:53:53/tcp"
+      - "8053:80/tcp"   # admin page, plain HTTP like the other tiles; the login is the only gate
+    volumes:
+      - /srv/pihole/etc-pihole:/etc/pihole
